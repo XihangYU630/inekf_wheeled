@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.linalg import block_diag, expm
 from helper_func import skew, wedge
+import pandas as pd
 
 # state variable: (R, v, p, b_w, b_a, R_c, p_c)
 g = np.array([0, 0, -9.8067])
@@ -13,9 +14,34 @@ w_c_observation = np.array([1, 1, 1]) # this is camera data for angular velocity
 error_estimated = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
                             0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
 
+# data processing
+Encoder = pd.read_csv('Encoder_velocities.csv')
+Sec_Enc = Encoder.iloc[:, 0]
+Sec_Nano_Enc = Encoder.iloc[:, 1]
+Left_wheel_ang = Encoder.iloc[:, 3]
+Right_wheel_ang = Encoder.iloc[:, 4]
+Filtered_imu = pd.read_csv('Filtered_imu_data.csv')
+Sec_IMU = Filtered_imu.iloc[:, 0]
+Sec_Nano_IMU = Filtered_imu.iloc[:, 1]
+a_x_IMU = Filtered_imu.iloc[:, 3]
+a_y_IMU = Filtered_imu.iloc[:, 4]
+a_z_IMU = Filtered_imu.iloc[:, 5]
+w_x_IMU = Filtered_imu.iloc[:, 6]
+w_y_IMU = Filtered_imu.iloc[:, 7]
+w_z_IMU = Filtered_imu.iloc[:, 8]
 
 # initial guess of state variables
-R, v, p, b_w, b_a, R_c, p_c
+R = 
+v
+p
+b_w
+b_a
+R_c
+p_c
+
+
+
+
 
 # initial noise variable
 Q = np.eye(3) # Q is 3*3 matrix
@@ -64,7 +90,7 @@ class Right_IEKF:
         B[0:9, 0:9] = self.Ad()
         B[9:21, 9:21] = np.eye(12)
 
-    def propagation_state_and_error(self):
+    def propagation_state_and_error(self, system):
         # w here is the estimated 
         R = self.R
         v = self.v
@@ -72,16 +98,16 @@ class Right_IEKF:
         b_w = self.b_w
         b_a = self.b_a
 
-        self.R = R @ expm(skew(w - b_w)*dt)
-        self.v = v + R @ (a - b_a) * dt + g * dt
-        self.p = p + v * dt + 0.5 * R @ (a - b_a) * dt * dt + 0.5 * g * dt * dt
+        self.R = R @ expm(skew(w - b_w)*system.dt)
+        self.v = v + R @ (system.a - b_a) * system.dt + system.g * system.dt
+        self.p = p + v * system.dt + 0.5 * R @ (system.a - b_a) * system.dt * system.dt + 0.5 * system.g * system.dt * system.dt
 
         A = self.compute_A()
-        self.error_estimated = self.error_estimated @ expm(A * dt)
+        self.error_estimated = self.error_estimated @ expm(A * system.dt)
 
-    def propagation_covariance(self):
-        PHI_k = expm(self.compute_A() * dt)
-        Q_k = PHI_k @ Q @ PHI_k.T * dt
+    def propagation_covariance(self, system):
+        PHI_k = expm(self.compute_A() * system.dt)
+        Q_k = PHI_k @ Q @ PHI_k.T * system.dt
         self.P = PHI_k @ self.P @ PHI_k.T + Q_k
     
     def compute_H(self):
