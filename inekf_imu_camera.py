@@ -3,50 +3,6 @@ from scipy.linalg import block_diag, expm
 from helper_func import skew, wedge
 import pandas as pd
 
-# state variable: (R, v, p, b_w, b_a, R_c, p_c)
-g = np.array([0, 0, -9.8067])
-dt = 0.1 # this should be retrieved from data
-w = np.array([0.1, 0.1, 0.1]) # this should be retrieved from data
-a = np.array([0.1, 0.1, 0.1]) # this should be retrieved from data
-y = np.array([0.1, 0.1, 0.1, -1, 0]) # this is the encoder data for left wheel
-v_c_observation = np.array([1, 1, 1]) # this is camera data for velocity
-w_c_observation = np.array([1, 1, 1]) # this is camera data for angular velocity
-error_estimated = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
-                            0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1])
-
-# data processing
-Encoder = pd.read_csv('Encoder_velocities.csv')
-Sec_Enc = Encoder.iloc[:, 0]
-Sec_Nano_Enc = Encoder.iloc[:, 1]
-Left_wheel_ang = Encoder.iloc[:, 3]
-Right_wheel_ang = Encoder.iloc[:, 4]
-Filtered_imu = pd.read_csv('Filtered_imu_data.csv')
-Sec_IMU = Filtered_imu.iloc[:, 0]
-Sec_Nano_IMU = Filtered_imu.iloc[:, 1]
-a_x_IMU = Filtered_imu.iloc[:, 3]
-a_y_IMU = Filtered_imu.iloc[:, 4]
-a_z_IMU = Filtered_imu.iloc[:, 5]
-w_x_IMU = Filtered_imu.iloc[:, 6]
-w_y_IMU = Filtered_imu.iloc[:, 7]
-w_z_IMU = Filtered_imu.iloc[:, 8]
-
-# initial guess of state variables
-R = 
-v
-p
-b_w
-b_a
-R_c
-p_c
-
-
-
-
-
-# initial noise variable
-Q = np.eye(3) # Q is 3*3 matrix
-nf_cov = np.eye(3) # nf_cov is 3*3 matrix
-N = np.eye(6) # N is covariance for camera data
 
 class Right_IEKF:
     def __init__(self, system):
@@ -54,17 +10,17 @@ class Right_IEKF:
         #
         # Input:
         #   system:     system and noise models
-        self.R = R  # error dynamics matrix
-        self.v = v  # process model
-        self.p = p  # measurement error matrix
-        self.b_w = b_w  # input noise covariance
-        self.b_a = b_a  # measurement noise covariance
-        self.R_c = R_c  # state vector
-        self.p_c = p_c  # state covariance
+        self.R = system.R  # error dynamics matrix
+        self.v = system.v  # process model
+        self.p = system.p  # measurement error matrix
+        self.b_w = system.b_w  # input noise covariance
+        self.b_a = system.b_a  # measurement noise covariance
+        self.R_c = system.R_c  # state vector
+        self.p_c = system.p_c  # state covariance
 
-        self.error_estimated = error_estimated
+        self.error_estimated = system.error_estimated
 
-        self.P = P
+        self.P = system.P
 
     def Ad(self):
         Ad_x = np.zeros((9, 9))
@@ -75,9 +31,9 @@ class Right_IEKF:
         Ad_x[6:9, 6:9] = self.R
         return Ad_x
 
-    def compute_A(self):
+    def compute_A(self, sys):
         A = np.zeros((21, 21))
-        A[3:6, 0:3] = skew(g)
+        A[3:6, 0:3] = skew(sys.g)
         A[6:9, 3:6] = np.eye(3)
         A[0:3, 9:12] = -self.R
         A[3:6, 9:12] = -skew(self.v) @ self.R
@@ -89,6 +45,7 @@ class Right_IEKF:
         B = np.zeros((21, 21))
         B[0:9, 0:9] = self.Ad()
         B[9:21, 9:21] = np.eye(12)
+        return B
 
     def propagation_state_and_error(self, system):
         # w here is the estimated 
@@ -98,16 +55,21 @@ class Right_IEKF:
         b_w = self.b_w
         b_a = self.b_a
 
-        self.R = R @ expm(skew(w - b_w)*system.dt)
+
+        self.R = R @ expm(skew(system.w - b_w)*system.dt)
         self.v = v + R @ (system.a - b_a) * system.dt + system.g * system.dt
         self.p = p + v * system.dt + 0.5 * R @ (system.a - b_a) * system.dt * system.dt + 0.5 * system.g * system.dt * system.dt
 
-        A = self.compute_A()
+        A = self.compute_A(system)
         self.error_estimated = self.error_estimated @ expm(A * system.dt)
 
     def propagation_covariance(self, system):
-        PHI_k = expm(self.compute_A() * system.dt)
+        PHI_k = expm(self.compute_A(system) * system.dt) # 21x21
+        # print("PHI_k: ", np.shape(PHI_k))
+        Q = self.compute_B() @ system.cov_w @ self.compute_B().T
+        # print("system.cov_w: ", np.shape(system.cov_w))
         Q_k = PHI_k @ Q @ PHI_k.T * system.dt
+        # print("Q_k: ", np.shape(Q_k))
         self.P = PHI_k @ self.P @ PHI_k.T + Q_k
     
     def compute_H(self):
@@ -127,14 +89,14 @@ class Right_IEKF:
         X[3, 3] = 1
         X[4, 4] = 1
 
-    def measurement_model_encoder(self):
+    def measurement_model_encoder(self, sys):
         H = self.compute_H()
-        N = self.R @ nf_cov @ self.R.T
+        N = self.R @ sys.nf_cov @ self.R.T
         S = H @ self.P @ H.T + N
         K = self.P @ H.T @ np.linalg.inv(S)
         PI = self.compute_PI()
         b = np.array([0, 0, 0, -1, 0])
-        delta = K @ PI @ (self.compute_X() @ y - b)
+        delta = K @ PI @ (self.compute_X() @ sys.y_encoder - b)
         delta_IMU = delta[0:9]
         delta_bw = delta[9:12]
         delta_ba = delta[12:15]
@@ -150,22 +112,22 @@ class Right_IEKF:
         self.v = X[0:3, 3]
         self.p = X[0:3, 4]
     
-    def measurement_model_camera(self):
-        v_c_estimated = self.R_c.T @ self.R.T @ self.v + skew(self.w_c) @ self.R_c.T @ self.p_c
-        inno_error = v_c_estimated - v_c_observation
+    def measurement_model_camera(self, sys):
+        v_c_estimated = self.R_c.T @ self.R.T @ self.v + skew(sys.w_c_observation) @ self.R_c.T @ self.p_c
+        inno_error = v_c_estimated - sys.v_c_observation
         ## Jacobina matrix H and G
         H = np.zeros((3, 21))
         H[:, 3:6] = self.R_c.T @ self.R.T
-        H[:, 15:18] = -skew(self.R_c @ self.R.T @ self.v)-skew(w_c_observation) @ skew(self.R_c.T @ self.p_c)
-        H[:, 18:21] = skew(w_c_observation) @ self.R_c.T
+        H[:, 15:18] = -skew(self.R_c @ self.R.T @ self.v)-skew(sys.w_c_observation) @ skew(self.R_c.T @ self.p_c)
+        H[:, 18:21] = skew(sys.w_c_observation) @ self.R_c.T
         G = np.zeros((3, 6))
         G[:, 0:3] = -skew(self.R_c.T @ self.p_c)
         G[:, 3:6] = -np.eye(3)
         ##
-        S = H @ self.P @ H.T + G @ N @ G.T
+        S = H @ self.P @ H.T + G @ sys.N_camera @ G.T
         K = self.P @ H.T @ np.linalg.inv(S)
         error = self.error_estimated + K @ inno_error
-        self.P = (np.eye(3) - K @ H) @ self.P
+        self.P = (np.eye(21) - K @ H) @ self.P
 
         error_R = error[0:3]
         error_v = error[3:6]
