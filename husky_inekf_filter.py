@@ -11,7 +11,8 @@ import matplotlib.pyplot as plt
 Visual_dom = pd.read_csv("Visual_odometry_v_w.csv")
 Sec_visdom = Visual_dom.iloc[:, 0]
 Sec_Nano_visdom = Visual_dom.iloc[:, 1]
-Sec_visdom_total = Sec_visdom + Sec_Nano_visdom
+Sec_visdom_total = Sec_visdom + Sec_Nano_visdom * 10 ** (-9)
+Sec_visdom_total = Sec_visdom_total - Sec_visdom_total[0]
 # print("type(Sec_visdom_total): ", type(Sec_visdom_total))
 v_x_visdom = Visual_dom.iloc[:, 2]
 v_y_visdom = Visual_dom.iloc[:, 3]
@@ -19,27 +20,35 @@ v_z_visdom = Visual_dom.iloc[:, 4]
 w_x_visdom = Visual_dom.iloc[:, 5]
 w_y_visdom = Visual_dom.iloc[:, 6]
 w_z_visdom = Visual_dom.iloc[:, 7]
+print("Sec_visdom: ", Sec_visdom[50:100])
+print("Sec_Nano_visdom: ", Sec_Nano_visdom[50:100])
+print("Sec_visdom_total: ", Sec_visdom_total[50:100])
 
 Encoder = pd.read_csv('Encoder_velocities.csv')
 Sec_Enc = Encoder.iloc[:, 0]
 Sec_Nano_Enc = Encoder.iloc[:, 1]
-Sec_Enc_total = Sec_Enc + Sec_Nano_Enc
+Sec_Enc_total = Sec_Enc + Sec_Nano_Enc * 10 ** (-9)
+Sec_Enc_total = Sec_Enc_total - Sec_Enc_total[0]
 Left_wheel_ang = Encoder.iloc[:, 3]
 Right_wheel_ang = Encoder.iloc[:, 4]
 print("Sec_Enc: ", Sec_Enc[50:100])
 print("Sec_Enc_total: ", Sec_Enc_total[50:100])
 print("Sec_Nano_Enc: ", Sec_Nano_Enc[50:100])
 
-Filtered_imu = pd.read_csv('Filtered_imu_data.csv')
+Filtered_imu = pd.read_csv('Filtered_imu_data_corr.csv')
 Sec_IMU = Filtered_imu.iloc[:, 0]
 Sec_Nano_IMU = Filtered_imu.iloc[:, 1]
+Sec_IMU_total = Sec_IMU + Sec_Nano_IMU * 10 ** (-9)
+Sec_IMU_total = Sec_IMU_total - Sec_IMU_total[0]
 a_x_IMU = Filtered_imu.iloc[:, 3]
 a_y_IMU = Filtered_imu.iloc[:, 4]
 a_z_IMU = Filtered_imu.iloc[:, 5]
 w_x_IMU = Filtered_imu.iloc[:, 6]
 w_y_IMU = Filtered_imu.iloc[:, 7]
 w_z_IMU = Filtered_imu.iloc[:, 8]
-# print("Sec_IMU: ", Sec_IMU[50:100])
+print("Sec_IMU: ", Sec_IMU[50:100])
+print("Sec_Nano_IMU: ", Sec_Nano_IMU[50:100])
+print("Sec_IMU_total: ", Sec_IMU_total[50:100])
 
 def find_nearest(array, value):
     array = np.asarray(array)
