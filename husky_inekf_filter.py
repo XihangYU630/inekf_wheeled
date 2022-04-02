@@ -20,20 +20,14 @@ v_z_visdom = Visual_dom.iloc[:, 4]
 w_x_visdom = Visual_dom.iloc[:, 5]
 w_y_visdom = Visual_dom.iloc[:, 6]
 w_z_visdom = Visual_dom.iloc[:, 7]
-print("Sec_visdom: ", Sec_visdom[50:100])
-print("Sec_Nano_visdom: ", Sec_Nano_visdom[50:100])
-print("Sec_visdom_total: ", Sec_visdom_total[50:100])
 
-Encoder = pd.read_csv('Encoder_velocities.csv')
+Encoder = pd.read_csv('Encoder_velocities_corr.csv')
 Sec_Enc = Encoder.iloc[:, 0]
 Sec_Nano_Enc = Encoder.iloc[:, 1]
 Sec_Enc_total = Sec_Enc + Sec_Nano_Enc * 10 ** (-9)
 Sec_Enc_total = Sec_Enc_total - Sec_Enc_total[0]
 Left_wheel_ang = Encoder.iloc[:, 3]
 Right_wheel_ang = Encoder.iloc[:, 4]
-print("Sec_Enc: ", Sec_Enc[50:100])
-print("Sec_Enc_total: ", Sec_Enc_total[50:100])
-print("Sec_Nano_Enc: ", Sec_Nano_Enc[50:100])
 
 Filtered_imu = pd.read_csv('Filtered_imu_data_corr.csv')
 Sec_IMU = Filtered_imu.iloc[:, 0]
@@ -46,9 +40,6 @@ a_z_IMU = Filtered_imu.iloc[:, 5]
 w_x_IMU = Filtered_imu.iloc[:, 6]
 w_y_IMU = Filtered_imu.iloc[:, 7]
 w_z_IMU = Filtered_imu.iloc[:, 8]
-print("Sec_IMU: ", Sec_IMU[50:100])
-print("Sec_Nano_IMU: ", Sec_Nano_IMU[50:100])
-print("Sec_IMU_total: ", Sec_IMU_total[50:100])
 
 def find_nearest(array, value):
     array = np.asarray(array)
@@ -82,21 +73,23 @@ class System:
         self.cov_w = np.eye(21) # Q is 3*3 matrix
         self.nf_cov = np.eye(3) # nf_cov is 3*3 matrix
         self.N_camera = np.eye(6) # N is covariance for camera data
+        self.v_c_observation = np.zeros(3)
+        self.w_c_observation = np.zeros(3)
 
     
     def update_IMU(self, i):
         # update dt, a, w
-        self.dt = Sec_IMU[i] + Sec_Nano_IMU[i] * 10 ** (-9) - Sec_IMU[i-1] + Sec_Nano_IMU[i-1] * 10 ** (-9)
+        self.dt = Sec_IMU_total[i] - Sec_IMU_total[i-1]
         self.a = np.array([a_x_IMU[i], a_y_IMU[i], a_z_IMU[i]])
         self.w = np.array([w_x_IMU[i], w_y_IMU[i], w_z_IMU[i]])
     
     def choose_measurement(self, i):
-        t = Sec_IMU[i] + Sec_Nano_IMU[i] * 10 ** (-9)
+        t = Sec_IMU_total[i]
         idx_1, t1 = find_nearest(Sec_Enc_total, t)
         idx_2, t2 = find_nearest(Sec_visdom_total, t)
-        # print("t1: ", t1)
-        # print("t2: ", t2)
-        # print("t: ", t)
+        print("t1: ", t1)
+        print("t2: ", t2)
+        print("t: ", t)
         threshold = 1000
         if np.abs(t1 - t) < threshold or np.abs(t2 - t) < threshold:
             if np.abs(t1 - t) < np.abs(t2 - t):
@@ -111,7 +104,7 @@ class System:
         if(flag == "encoder"):
             w_l = np.array([-Left_wheel_ang[idx], 0, 0])
             w = np.array([w_x_IMU[idx], w_y_IMU[idx], w_z_IMU[idx]])
-            y = helper_func.skew(w_l) @ self.r1 + 0.5 @ helper_func.skew(w) @ self.r2
+            y = helper_func.skew(w_l) @ self.r1 + 0.5 * helper_func.skew(w) @ self.r2
             self.y_encoder = np.array([y[0], y[1], y[2], -1, 0])
         elif (flag == " camera"):
             self.v_c_observation = np.array([v_x_visdom[idx], v_y_visdom[idx], v_z_visdom[idx]])
@@ -119,16 +112,38 @@ class System:
 
 
 def plot(v, p, t):
-    fig, axs = plt.subplots(6)
-    fig.suptitle('Vertically stacked subplots')
-    print("shape(v): ", np.shape(v))
-    print("shape(t): ", np.shape(t))
-    axs[0].plot(v[:, 0], t)
-    axs[1].plot(v[:, 1], t)
-    axs[2].plot(v[:, 2], t)
-    axs[3].plot(p[:, 0], t)
-    axs[4].plot(p[:, 1], t)
-    axs[5].plot(p[:, 2], t)
+
+
+    fig, axs = plt.subplots(2, 3)
+    axs[0, 0].plot(t, v[:, 0])
+    axs[0, 0].set_title("v_x")
+    axs[0, 1].plot(t, v[:, 1])
+    axs[0, 1].set_title("v_y")
+    # axs[0, 2].sharex(axs[0, 0])
+    axs[0, 2].plot(t, v[:, 2])
+    axs[0, 2].set_title("v_z")
+
+
+    axs[1, 0].plot(t, p[:, 0])
+    axs[1, 0].set_title("p_x")
+    axs[1, 1].plot(t, p[:, 1])
+    axs[1, 1].set_title("p_y")
+    axs[1, 2].plot(t, p[:, 2])
+    axs[1, 2].set_title("p_z")
+    fig.tight_layout()
+
+    # fig, axs = plt.subplots(6)
+    # fig.suptitle('Vertically stacked subplots')
+    # print("shape(v): ", np.shape(v))
+    # print("shape(t): ", np.shape(t))
+    # axs[0].plot(v[:, 0], t)
+    # axs[1].plot(v[:, 1], t)
+    # axs[2].plot(v[:, 2], t)
+    # axs[3].plot(p[:, 0], t)
+    # axs[4].plot(p[:, 1], t)
+    # axs[5].plot(p[:, 2], t)
+
+    plt.show()
 
 def main():
 
@@ -157,6 +172,10 @@ def main():
         system.update_measurement(flag, idx)
         ## the nearest time stamp is encoder
         # print(flag)
+        print("i: ", i)
+        if(i == 52):
+
+            break      
         if(flag == "encoder"):
             husky.measurement_model_encoder(system)
             v = np.vstack((v,husky.v))

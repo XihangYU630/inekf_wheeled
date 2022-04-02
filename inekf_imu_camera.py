@@ -61,6 +61,7 @@ class Right_IEKF:
         self.p = p + v * system.dt + 0.5 * R @ (system.a - b_a) * system.dt * system.dt + 0.5 * system.g * system.dt * system.dt
 
         A = self.compute_A(system)
+        print("A: ", A)
         self.error_estimated = self.error_estimated @ expm(A * system.dt)
 
     def propagation_covariance(self, system):
@@ -85,9 +86,10 @@ class Right_IEKF:
         X = np.zeros((5, 5))
         X[0:3, 0:3] = self.R
         X[0:3, 3] = self.v
-        X[0:3, 4] = self.P
+        X[0:3, 4] = self.p
         X[3, 3] = 1
         X[4, 4] = 1
+        return X
 
     def measurement_model_encoder(self, sys):
         H = self.compute_H()
@@ -96,6 +98,12 @@ class Right_IEKF:
         K = self.P @ H.T @ np.linalg.inv(S)
         PI = self.compute_PI()
         b = np.array([0, 0, 0, -1, 0])
+
+        print("K.shape: ", np.shape(K))
+        print("PI.shape: ", np.shape(PI))
+        print("self.compute_X().shape: ", np.shape(self.compute_X()))
+        print("sys.y_encoder.shape: ", np.shape(sys.y_encoder))
+        print("b.shape: ", np.shape(b))
         delta = K @ PI @ (self.compute_X() @ sys.y_encoder - b)
         delta_IMU = delta[0:9]
         delta_bw = delta[9:12]
