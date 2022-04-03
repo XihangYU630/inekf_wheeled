@@ -8,21 +8,21 @@ import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
 
 
-# data processing
-Visual_dom = pd.read_csv("Visual_odometry_v_w.csv")
+# parking lot data processing 
+Visual_dom = pd.read_csv("Camera_odometry_parking.csv")
 Sec_visdom = Visual_dom.iloc[:, 0]
 Sec_Nano_visdom = Visual_dom.iloc[:, 1]
 Sec_visdom_total = Sec_visdom + Sec_Nano_visdom * 10 ** (-9)
 Sec_visdom_total = Sec_visdom_total - Sec_visdom_total[0]
 # print("type(Sec_visdom_total): ", type(Sec_visdom_total))
-v_x_visdom = Visual_dom.iloc[:, 2]
-v_y_visdom = Visual_dom.iloc[:, 3]
-v_z_visdom = Visual_dom.iloc[:, 4]
-w_x_visdom = Visual_dom.iloc[:, 5]
-w_y_visdom = Visual_dom.iloc[:, 6]
-w_z_visdom = Visual_dom.iloc[:, 7]
+v_x_visdom = Visual_dom.iloc[:, 3]
+v_y_visdom = Visual_dom.iloc[:, 4]
+v_z_visdom = Visual_dom.iloc[:, 5]
+w_x_visdom = Visual_dom.iloc[:, 6]
+w_y_visdom = Visual_dom.iloc[:, 7]
+w_z_visdom = Visual_dom.iloc[:, 8]
 
-Visual_dom_gt = pd.read_csv("Camera_ground_truth.csv")
+Visual_dom_gt = pd.read_csv("Camera_ground_truth_parking.csv")
 Sec_camera_pos = Visual_dom_gt.iloc[:, 0]
 Sec_Nano_camera_pos = Visual_dom_gt.iloc[:, 1]
 Sec_camera_pos_total = Sec_camera_pos + Sec_Nano_camera_pos * 10 ** (-9)
@@ -36,8 +36,7 @@ q_y_visdom = Visual_dom_gt.iloc[:, 7]
 q_z_visdom = Visual_dom_gt.iloc[:, 8]
 q_w_visdom = Visual_dom_gt.iloc[:, 9]
 
-
-Encoder = pd.read_csv('Encoder_velocities_corr.csv')
+Encoder = pd.read_csv('Encoder_data_parking.csv')
 Sec_Enc = Encoder.iloc[:, 0]
 Sec_Nano_Enc = Encoder.iloc[:, 1]
 Sec_Enc_total = Sec_Enc + Sec_Nano_Enc * 10 ** (-9)
@@ -45,7 +44,16 @@ Sec_Enc_total = Sec_Enc_total - Sec_Enc_total[0]
 Left_wheel_ang = Encoder.iloc[:, 3]
 Right_wheel_ang = Encoder.iloc[:, 4]
 
-Filtered_imu = pd.read_csv('Unfiltered_imu_data.csv')
+GPS_parking = pd.read_csv("GPS_parking.csv")
+Sec_GPS = GPS_parking.iloc[:, 0]
+Sec_Nano_GPS = GPS_parking.iloc[:, 1]
+Sec_GPS_total = Sec_GPS + Sec_Nano_GPS * 10 ** (-9)
+Sec_GPS_total = Sec_GPS_total - Sec_GPS_total[0]
+Lat_GPS = GPS_parking.iloc[:, 3]
+Long_GPS = GPS_parking.iloc[:, 4]
+Alt_GPS = GPS_parking.iloc[:, 5]
+
+Filtered_imu = pd.read_csv('gx5_0_IMU_data_parking.csv')
 Sec_IMU = Filtered_imu.iloc[:, 0]
 Sec_Nano_IMU = Filtered_imu.iloc[:, 1]
 Sec_IMU_total = Sec_IMU + Sec_Nano_IMU * 10 ** (-9)
@@ -56,6 +64,67 @@ a_z_IMU = Filtered_imu.iloc[:, 5]
 w_x_IMU = Filtered_imu.iloc[:, 6]
 w_y_IMU = Filtered_imu.iloc[:, 7]
 w_z_IMU = Filtered_imu.iloc[:, 8]
+
+Filtered_imu_1 = pd.read_csv('gx5_1_IMU_data_parking.csv')
+Sec_IMU_1 = Filtered_imu_1.iloc[:, 0]
+Sec_Nano_IMU_1 = Filtered_imu_1.iloc[:, 1]
+Sec_IMU_total_1 = Sec_IMU_1 + Sec_Nano_IMU_1 * 10 ** (-9)
+Sec_IMU_total_1 = Sec_IMU_total_1 - Sec_IMU_total_1[0]
+a_x_IMU_1 = Filtered_imu_1.iloc[:, 3]
+a_y_IMU_1 = Filtered_imu_1.iloc[:, 4]
+a_z_IMU_1 = Filtered_imu_1.iloc[:, 5]
+w_x_IMU_1 = Filtered_imu_1.iloc[:, 6]
+w_y_IMU_1 = Filtered_imu_1.iloc[:, 7]
+w_z_IMU_1 = Filtered_imu_1.iloc[:, 8]
+
+# # data processing
+# Visual_dom = pd.read_csv("Visual_odometry_v_w.csv")
+# Sec_visdom = Visual_dom.iloc[:, 0]
+# Sec_Nano_visdom = Visual_dom.iloc[:, 1]
+# Sec_visdom_total = Sec_visdom + Sec_Nano_visdom * 10 ** (-9)
+# Sec_visdom_total = Sec_visdom_total - Sec_visdom_total[0]
+# # print("type(Sec_visdom_total): ", type(Sec_visdom_total))
+# v_x_visdom = Visual_dom.iloc[:, 2]
+# v_y_visdom = Visual_dom.iloc[:, 3]
+# v_z_visdom = Visual_dom.iloc[:, 4]
+# w_x_visdom = Visual_dom.iloc[:, 5]
+# w_y_visdom = Visual_dom.iloc[:, 6]
+# w_z_visdom = Visual_dom.iloc[:, 7]
+
+# Visual_dom_gt = pd.read_csv("Camera_ground_truth.csv")
+# Sec_camera_pos = Visual_dom_gt.iloc[:, 0]
+# Sec_Nano_camera_pos = Visual_dom_gt.iloc[:, 1]
+# Sec_camera_pos_total = Sec_camera_pos + Sec_Nano_camera_pos * 10 ** (-9)
+# Sec_camera_pos_total = Sec_camera_pos_total - Sec_camera_pos_total[0]
+# # print("type(Sec_visdom_total): ", type(Sec_visdom_total))
+# p_x_visdom = Visual_dom_gt.iloc[:, 3]
+# p_y_visdom = Visual_dom_gt.iloc[:, 4]
+# p_z_visdom = Visual_dom_gt.iloc[:, 5]
+# q_x_visdom = Visual_dom_gt.iloc[:, 6]
+# q_y_visdom = Visual_dom_gt.iloc[:, 7]
+# q_z_visdom = Visual_dom_gt.iloc[:, 8]
+# q_w_visdom = Visual_dom_gt.iloc[:, 9]
+
+
+# Encoder = pd.read_csv('Encoder_velocities_corr.csv')
+# Sec_Enc = Encoder.iloc[:, 0]
+# Sec_Nano_Enc = Encoder.iloc[:, 1]
+# Sec_Enc_total = Sec_Enc + Sec_Nano_Enc * 10 ** (-9)
+# Sec_Enc_total = Sec_Enc_total - Sec_Enc_total[0]
+# Left_wheel_ang = Encoder.iloc[:, 3]
+# Right_wheel_ang = Encoder.iloc[:, 4]
+
+# Filtered_imu = pd.read_csv('Unfiltered_imu_data.csv')
+# Sec_IMU = Filtered_imu.iloc[:, 0]
+# Sec_Nano_IMU = Filtered_imu.iloc[:, 1]
+# Sec_IMU_total = Sec_IMU + Sec_Nano_IMU * 10 ** (-9)
+# Sec_IMU_total = Sec_IMU_total - Sec_IMU_total[0]
+# a_x_IMU = Filtered_imu.iloc[:, 3]
+# a_y_IMU = Filtered_imu.iloc[:, 4]
+# a_z_IMU = Filtered_imu.iloc[:, 5]
+# w_x_IMU = Filtered_imu.iloc[:, 6]
+# w_y_IMU = Filtered_imu.iloc[:, 7]
+# w_z_IMU = Filtered_imu.iloc[:, 8]
 
 def find_nearest(array, value):
     array = np.asarray(array)
