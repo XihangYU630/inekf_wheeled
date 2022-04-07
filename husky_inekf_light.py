@@ -8,7 +8,7 @@ from scipy.spatial.transform import Rotation
 
 
 
-measurements = pd.read_csv("sorted_sensor_dataset.csv")
+measurements = pd.read_csv("sorted_sensor_dataset_new.csv")
 
 Visual_dom_gt = pd.read_csv("Camera_ground_truth_parking.csv")
 Sec_camera_pos = Visual_dom_gt.iloc[:, 0]
@@ -73,9 +73,12 @@ class System:
     def __init__(self):
 
         # initial guess of state variables
-        self.R = np.array([[1, 0, -0.04],
-                           [0, 0.99, -0.04],
-                           [0.04, 0.04, 0.97]])  # error dynamics matrix
+        # self.R = np.array([[1, 0, -0.04],
+        #                    [0, 0.99, -0.04],
+        #                    [0.04, 0.04, 0.97]])  # error dynamics matrix
+        self.R = np.array([[0.1542515,  0.0000000, -0.9880316],
+                           [0.9762065,  0.1542515,  0.1524053],
+                           [0.1524053, -0.9880316,  0.0237935]])
         # self.R = np.array([[0, 1, 0],
         #                    [-1, 0, 0],
         #                    [0, 0, 1]])  # error dynamics matrix
@@ -89,10 +92,13 @@ class System:
         # self.R_c = np.array([[0.95, 0.034, -0.32],
         #                      [-0.002, 0.99, 0.01],
         #                      [0.32, -0.09, 0.94]])  # state vector
-        self.R_c = np.eye(3)
+        # self.R_c = np.eye(3)
+        self.R_c = np.array([[0, 1, 0],
+                          [-1, 0, 0],
+                          [0, 0, 1]])
         self.p_c = np.array([0, 0, 0])  # state covariance
 
-        self.P = np.eye(21) * 0.000000001
+        self.P = np.eye(21) * 1
         self.P[15:21, 15:21] = np.zeros((6, 6))
         # hard code calibration
         self.g = np.array([0, 0, 9.8067])
@@ -107,29 +113,60 @@ class System:
         # hard coded noise covariance
         ## these parameters are used for tuning
         self.cov_w = np.eye(21) * 1  # cov_w is 21*21 matrix
-        ## w = (w_w, w_a, 0, w_ba, w_bw, w_Rc, w_pc)
-        self.cov_w[6, 6] = 0
-        self.cov_w[7, 7] = 0
-        self.cov_w[8, 8] = 0
-        self.nf_cov = np.diag([5, 5, 1])  # nf_cov is 3*3 matrix
-        self.N_camera = np.eye(3) * 2.5  # N is covariance for camera data
+        self.cov_w[15, 15] = 5
+        self.cov_w[16, 16] = 5
+        self.cov_w[17, 17] = 5
+        ## w = (w_w,w_a, 0, w_ba, w_bw, w_Rc, w_pc)
+        self.cov_w[18, 18] = 5
+        self.cov_w[19, 19] = 5
+        self.cov_w[20, 20] = 5
+        self.nf_cov = np.diag([5, 5, 5])  # nf_cov is 3*3 matrix
+        self.N_camera = np.diag([100, 100, 100, 10, 10, 10])  # N is covariance for camera data
+        self.N_pos = np.eye(3) * 5
         self.v_c_observation = np.zeros(3)
         self.w_c_observation = np.zeros(3)
 
-def plot(v, p, b_w, b_a, R_quat, p_c, R_c_quat, t, measurement_pos, v_body, q_visdom):
+        # self.n = 5 #number in the tuning window
+
+    # def compute_camera_covariance(self, measurements_camera):
+    #
+    #     self.N_camera = np.zeros((6, 6))
+    #     for i in range(self.n):
+    #         sum = np.zeros(6)
+    #         for measurement in measurements_camera:
+    #             sum = sum + measurement
+    #             print("sum: ", sum)
+    #         e_i = measurements_camera[i] - sum / self.n
+    #         print("e: ", e_i)
+    #         self.N_camera = self.N_camera + e_i.reshape(6, 1) @ e_i.reshape(1, 6)
+    #         # print("N_camera: ", self.N_camera)
+    #     self.N_camera = self.N_camera / self.n
+    #     print("N_camera: ", self.N_camera)
+
+    # def compute_encoder_covariance(self, measurements_encoder):
+    #
+    #     self.nf_cov = np.zeros((3, 3))
+    #     for measurement in measurements_encoder:
+    #         e = measurement - np.sum(measurement) / self.n
+    #         print("encoder.shape(e): ", np.shape(e))
+    #         self.nf_cov = self.nf_cov + e.reshape(3, 1) @ e.reshape(1, 3)
+    #     self.nf_cov = self.nf_cov / self.n
+
+def plot(v, p, b_w, b_a, R_quat, p_c, R_c_quat, t, measurement_pos, v_body, q_visdom, v_body_camera):
 
     fig, axs = plt.subplots(4, 3, figsize=(15, 7))
     axs[0, 0].plot(t, v[:, 0])
     axs[0, 0].plot(t, v_body[:, 0])
+    axs[0, 0].plot(t, v_body_camera[:, 0])
     axs[0, 0].set_title("v_x")
     axs[0, 1].plot(t, v[:, 1])
     axs[0, 1].plot(t, v_body[:, 1])
+    axs[0, 1].plot(t, v_body_camera[:, 1])
     axs[0, 1].set_title("v_y")
     axs[0, 2].plot(t, v[:, 2])
     axs[0, 2].plot(t, v_body[:, 2])
+    axs[0, 2].plot(t, v_body_camera[:, 2])
     axs[0, 2].set_title("v_z")
-
-    idx = 1000
 
     axs[1, 0].plot(t, p[:, 0])
     # axs[1, 0].plot(Sec_camera_pos_total[0:idx], p_x_visdom[0:idx])
@@ -197,6 +234,8 @@ def plot(v, p, b_w, b_a, R_quat, p_c, R_c_quat, t, measurement_pos, v_body, q_vi
     plt.show()
 
 
+
+
 def main():
     system = System()
     husky = inekf_imu_cameraPos.Right_IEKF(system)
@@ -207,6 +246,7 @@ def main():
     b_a = husky.b_a
     p_c = husky.p_c
     v_body = np.zeros(3)
+    v_body_camera = np.zeros(3)
 
     t_stack = np.zeros(1)
 
@@ -220,6 +260,9 @@ def main():
 
     imu_measurement = np.zeros(6)
     imu_measurement_prev = np.zeros(6)
+    # measurements_camera = np.zeros((system.n, 6))
+    # measurements_encoder = np.zeros((20, 2))
+
     t = 0
     t_prev = 0
 
@@ -227,8 +270,11 @@ def main():
 
     measurement_pos = np.zeros(3)
 
+    count = 0
+
+
     for idx, measurement in measurements.iterrows():
-        if idx == 5000:
+        if idx == 4500:
             break
         if measurement[0] == "i":
             t = measurement[3]
@@ -243,6 +289,14 @@ def main():
         elif measurement[0] == "e":
             t = measurement[3]
             w_l = np.array([measurement[10], 0, 0])
+            w_r = np.array([measurement[11], 0, 0])
+
+            # w_wheel = np.array([measurement[10], measurement[11]])
+            # measurements_encoder = np.append(measurements_encoder, [w_wheel], axis=0)
+            # measurements_encoder = np.delete(measurements_encoder, (0), 0)
+            # if count >= system.n:
+            #     system.compute_encoder_covariance(measurements_encoder)
+
             w = imu_measurement_prev[3:6]
             y_1 = helper_func.skew(w_l) @ system.r1 - 0.5 * helper_func.skew(w) @ system.r2
             system.y_encoder_1 = np.array([y_1[0], y_1[1], y_1[2], -1, 0])
@@ -257,16 +311,35 @@ def main():
 
             pos = np.array([measurement[12], measurement[13], measurement[14]])
             # pos = pos - np.array([-0.15823796, 0.155218643, 0.080507172])
+
+
             r = np.array([[0, 1, 0],
                           [-1, 0, 0],
                           [0, 0, 1]])
             pos = r @ pos
             system.y_pos = np.array([pos[0], pos[1], pos[2], 0, 1])
             system.quat = np.array([measurement[15], measurement[16], measurement[17], measurement[18]])
+
+
+            system.v_c_observation = np.array([measurement[19], measurement[20], measurement[21]])
+            system.w_c_observation = np.array([measurement[7], measurement[8], measurement[9]])
+
+            # v_plus_w = np.array([measurement[19], measurement[20], measurement[21], measurement[7], measurement[8], measurement[9]])
+            # measurements_camera = np.append(measurements_camera, [v_plus_w], axis=0)
+            # measurements_camera = np.delete(measurements_camera, (0), 0)
+            # if count >= system.n and t > 20:
+            #     system.compute_camera_covariance(measurements_camera)
+
+            # system.v_c_observation = np.array([0, 0, 0])
+            # husky.measurement_model_camera(system)
             # husky.measurement_model_position(system)
+
+        count = count + 1
+
         print("t: ", t)
         q_visdom = np.vstack((q_visdom, system.quat))
         measurement_pos = np.vstack((measurement_pos, system.y_pos[0:3]))
+        v_body_camera = np.vstack((v_body_camera, system.v_c_observation))
 
         t_prev = t
         imu_measurement_prev = imu_measurement
@@ -305,7 +378,7 @@ def main():
     #     Rot_quat_total = Rot_1.as_quat()
     #     q_visdom[i, :] = Rot_quat_total
 
-    plot(v, p, b_w, b_a, R_quat, p_c, R_c_quat, t_stack, measurement_pos, v_body, q_visdom)
+    plot(v, p, b_w, b_a, R_quat, p_c, R_c_quat, t_stack, measurement_pos, v_body, q_visdom, v_body_camera)
 
 
 if __name__ == "__main__":

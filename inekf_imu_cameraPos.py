@@ -126,14 +126,13 @@ class Right_IEKF:
         self.p_c = self.p_c + delta_pc
         self.P = (np.eye(21) - K @ H) @ self.P @ (np.eye(21) - K @ H).T + K @ N @ K.T
         self.R = X[0:3, 0:3]
-        print("1. self.R @ self.R.T: ", self.R @ self.R.T)
         self.v = X[0:3, 3]
         self.p = X[0:3, 4]
 
     def measurement_model_position(self, sys):
         H = np.zeros((3, 9))
         H[0:3, 6:9] = np.eye(3)
-        N = np.linalg.inv(self.R) @ sys.N_camera @ np.linalg.inv(self.R.T) ## nf_cov is the noise for measurements of position
+        N = np.linalg.inv(self.R) @ sys.N_pos @ np.linalg.inv(self.R.T) ## nf_cov is the noise for measurements of position
 
         P_l = np.linalg.inv(self.Ad()) @ self.P[0:9, 0:9] @ np.linalg.inv(self.Ad().T)
 
@@ -144,6 +143,7 @@ class Right_IEKF:
         print("sys.y_pos: ", sys.y_pos)
         print("self.compute_X()) @ sys.y_pos: ", np.linalg.inv(self.compute_X()) @ sys.y_pos)
         delta = K @ (np.linalg.inv(self.compute_X()) @ sys.y_pos - b)[0:3] ## delta is 9x1
+
         X = self.compute_X() @ expm(wedge(delta))
         self.R = X[0:3, 0:3]
         print("self.R @ self.R.T: ", self.R @ self.R.T)
@@ -154,49 +154,46 @@ class Right_IEKF:
         P_l = (np.eye(9) - K @ H) @ P_l  @ (np.eye(9) - K @ H).T + K @ N @ K.T
         self.P[0:9, 0:9] = self.Ad() @ P_l @ self.Ad().T
 
-    def measurement_model_kinematics(self, sys):
+    def measurement_model_camera(self, sys):
+        v_c_estimated = self.R_c.T @ self.R.T @ self.v + skew(sys.w_c_observation) @ self.R_c.T @ self.p_c
+        print("v_c_estimated: ", v_c_estimated)
+        print("sys.v_c_observation: ", sys.v_c_observation)
+        inno_error = v_c_estimated - sys.v_c_observation
+        ## Jacobina matrix H and G
+        H = np.zeros((3, 21))
+        H[:, 3:6] = -self.R_c.T @ self.R.T
+        H[:, 15:18] = -self.R_c.T @ skew(self.R.T @ self.v)-skew(-sys.w_c_observation) @ self.R_c.T @ skew(self.p_c)
+        print("sys.w_c_observation: ", )
+        H[:, 18:21] = -skew(sys.w_c_observation) @ self.R_c.T
+        # G = np.zeros((3, 6))
+        # G[:, 0:3] = -skew(self.R_c.T @ self.p_c)
+        # G[:, 3:6] = -np.eye(3)
+        ##
 
+        N = sys.N_camera[0:3, 0:3] + skew(self.R_c.T @ self.p_c) * sys.N_camera[3:6, 3:6] @ skew(self.R_c.T @ self.p_c).T
+        N = self.R @ self.R_c @ N @ (self.R @ self.R_c).T
 
-        H = np.zeros((2, 21))
-        H[:, 3:6] = Ro
+        S = H @ self.P @ H.T + N  ## S is different
+        print("H: ", H)
+        # S = H @ self.P @ H.T + G @ sys.N_camera @ G.T
+        K = self.P @ H.T @ np.linalg.inv(S)
+        error = K @ inno_error
 
-
-    # def measurement_model_camera(self, sys):
-    #     v_c_estimated = self.R_c.T @ self.R.T @ self.v + skew(sys.w_c_observation) @ self.R_c.T @ self.p_c
-    #     inno_error = v_c_estimated - sys.v_c_observation
-    #
-    #     ## Jacobina matrix H and G
-    #     H = np.zeros((3, 21))
-    #     H[:, 3:6] = self.R_c.T @ self.R.T
-    #     H[:, 15:18] = self.R_c.T @ skew(self.R.T @ self.v)+skew(sys.w_c_observation) @ self.R_c.T @ skew(self.p_c)
-    #     H[:, 18:21] = -skew(sys.w_c_observation) @ self.R_c.T
-    #     G = np.zeros((3, 6))
-    #     G[:, 0:3] = -skew(self.R_c.T @ self.p_c)
-    #     G[:, 3:6] = -np.eye(3)
-    #     ##
-    #
-    #     N = sys.N_camera[3:6, 3:6] + skew(self.R_c.T @ self.p_c) * sys.N_camera[0:3, 0:3] @ skew(self.R_c.T @ self.p_c).T
-    #     N = self.R @ self.R_c @ N @ (self.R @ self.R_c).T
-    #
-    #     # S = H @ self.P @ H.T + N  ## S is different
-    #     S = H @ self.P @ H.T + G @ sys.N_camera @ G.T
-    #     K = self.P @ H.T @ np.linalg.inv(S)
-    #     error = K @ inno_error
-    #
-    #     self.P = (np.eye(21) - K @ H) @ self.P
-    #     # self.P = (np.eye(21) - K @ H) @ self.P @ (np.eye(21) - K @ H).T + K @ G @ sys.N_camera @ G.T @ K.T
-    #
-    #     delta_IMU = error[0:9]
-    #     delta_bw = error[9:12]
-    #     delta_ba = error[12:15]
-    #     delta_Rc = error[15:18]
-    #     delta_pc = error[18:21]
-    #     X = expm(wedge(delta_IMU)) @ self.compute_X()
-    #     self.b_w = self.b_w + delta_bw
-    #     self.b_a = self.b_a + delta_ba
-    #     self.R_c = expm(skew(delta_Rc)) @ self.R_c
-    #     self.p_c = self.p_c + delta_pc
-    #     self.R = X[0:3, 0:3]
-    #     self.v = X[0:3, 3]
-    #     self.p = X[0:3, 4]
+        self.P = (np.eye(21) - K @ H) @ self.P
+        # self.P = (np.eye(21) - K @ H) @ self.P @ (np.eye(21) - K @ H).T + K @ G @ sys.N_camera @ G.T @ K.T
+        print("error: ", error)
+        delta_IMU = error[0:9]
+        delta_bw = error[9:12]
+        delta_ba = error[12:15]
+        delta_Rc = error[15:18]
+        delta_pc = error[18:21]
+        print("delta_pc: ", delta_pc)
+        X = expm(wedge(delta_IMU)) @ self.compute_X()
+        self.b_w = self.b_w + delta_bw
+        self.b_a = self.b_a + delta_ba
+        self.R_c = expm(skew(delta_Rc)) @ self.R_c
+        self.p_c = self.p_c + delta_pc
+        self.R = X[0:3, 0:3]
+        self.v = X[0:3, 3]
+        self.p = X[0:3, 4]
 
