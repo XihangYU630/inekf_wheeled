@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.linalg import block_diag, expm
 import helper_func
 import pandas as pd
 import inekf_imu_cameraPos
@@ -8,61 +7,24 @@ from scipy.spatial.transform import Rotation
 
 
 
-measurements = pd.read_csv("sorted_sensor_dataset_new.csv")
+measurements = pd.read_csv("data/sorted_sensor_dataset_new.csv")
 
-Visual_dom_gt = pd.read_csv("Camera_ground_truth_parking.csv")
-Sec_camera_pos = Visual_dom_gt.iloc[:, 0]
-Sec_Nano_camera_pos = Visual_dom_gt.iloc[:, 1]
-Sec_camera_pos_total = Sec_camera_pos + Sec_Nano_camera_pos * 10 ** (-9)
-Sec_camera_pos_total = Sec_camera_pos_total - Sec_camera_pos_total[0]
-p_x_visdom = Visual_dom_gt.iloc[:, 3]
-p_y_visdom = Visual_dom_gt.iloc[:, 4]
-p_z_visdom = Visual_dom_gt.iloc[:, 5]
-q_x_visdom = Visual_dom_gt.iloc[:, 6]
-q_y_visdom = Visual_dom_gt.iloc[:, 7]
-q_z_visdom = Visual_dom_gt.iloc[:, 8]
-q_w_visdom = Visual_dom_gt.iloc[:, 9]
+# imu = pd.read_csv("data/Mat_IMU_indoor.csv")
+# encoder = pd.read_csv("data/Mat_Encoder_indoor.csv")
+# merged = imu.merge(encoder, on="t", how="outer").fillna("")
+# merged.sort_values(["t"],
+#                     axis=0,
+#                     ascending=[False],
+#                     inplace=True)
+#
+# merged.to_csv("merged_indoor.csv", index=False)
 
-Encoder = pd.read_csv('Encoder_data_parking.csv')
-Sec_Enc = Encoder.iloc[:, 0]
-Sec_Nano_Enc = Encoder.iloc[:, 1]
-Sec_Enc_total = Sec_Enc + Sec_Nano_Enc * 10 ** (-9)
-Sec_Enc_total = Sec_Enc_total - Sec_Enc_total[0]
-Left_wheel_ang = Encoder.iloc[:, 3]
-Right_wheel_ang = Encoder.iloc[:, 4]
-
-GPS_parking = pd.read_csv("GPS_parking.csv")
-Sec_GPS = GPS_parking.iloc[:, 0]
-Sec_Nano_GPS = GPS_parking.iloc[:, 1]
-Sec_GPS_total = Sec_GPS + Sec_Nano_GPS * 10 ** (-9)
-Sec_GPS_total = Sec_GPS_total - Sec_GPS_total[0]
-Lat_GPS = GPS_parking.iloc[:, 3]
-Long_GPS = GPS_parking.iloc[:, 4]
-Alt_GPS = GPS_parking.iloc[:, 5]
-
-Filtered_imu = pd.read_csv('gx5_0_IMU_data_parking.csv')
-Sec_IMU = Filtered_imu.iloc[:, 0]
-Sec_Nano_IMU = Filtered_imu.iloc[:, 1]
-Sec_IMU_total = Sec_IMU + Sec_Nano_IMU * 10 ** (-9)
-Sec_IMU_total = Sec_IMU_total - Sec_IMU_total[0]
-a_x_IMU = Filtered_imu.iloc[:, 3]
-a_y_IMU = Filtered_imu.iloc[:, 4]
-a_z_IMU = Filtered_imu.iloc[:, 5]
-w_x_IMU = Filtered_imu.iloc[:, 6]
-w_y_IMU = Filtered_imu.iloc[:, 7]
-w_z_IMU = Filtered_imu.iloc[:, 8]
-
-Filtered_imu_1 = pd.read_csv('gx5_1_IMU_data_parking.csv')
-Sec_IMU_1 = Filtered_imu_1.iloc[:, 0]
-Sec_Nano_IMU_1 = Filtered_imu_1.iloc[:, 1]
-Sec_IMU_total_1 = Sec_IMU_1 + Sec_Nano_IMU_1 * 10 ** (-9)
-Sec_IMU_total_1 = Sec_IMU_total_1 - Sec_IMU_total_1[0]
-a_x_IMU_1 = Filtered_imu_1.iloc[:, 3]
-a_y_IMU_1 = Filtered_imu_1.iloc[:, 4]
-a_z_IMU_1 = Filtered_imu_1.iloc[:, 5]
-w_x_IMU_1 = Filtered_imu_1.iloc[:, 6]
-w_y_IMU_1 = Filtered_imu_1.iloc[:, 7]
-w_z_IMU_1 = Filtered_imu_1.iloc[:, 8]
+# fig = plt.figure(figsize=(16, 8))
+# plt.plot(measurements_2.iloc[:, 1], measurements_2.iloc[:, 2], linewidth=1)
+# plt.legend(("ORB-SLAM"), loc="center left")
+# # plt.set_xlabel("x-pos (m)")
+# # plt.set_ylabel("y-pos (m)")
+# plt.show()
 
 def find_nearest(array, value):
     array = np.asarray(array)
@@ -73,12 +35,12 @@ class System:
     def __init__(self):
 
         # initial guess of state variables
-        # self.R = np.array([[1, 0, -0.04],
-        #                    [0, 0.99, -0.04],
-        #                    [0.04, 0.04, 0.97]])  # error dynamics matrix
-        self.R = np.array([[0.1542515,  0.0000000, -0.9880316],
-                           [0.9762065,  0.1542515,  0.1524053],
-                           [0.1524053, -0.9880316,  0.0237935]])
+        self.R = np.array([[1, 0, -0.04],
+                           [0, 0.99, -0.04],
+                           [0.04, 0.04, 0.97]])  # error dynamics matrix
+        # self.R = np.array([[0.1542515,  0.0000000, -0.9880316],
+        #                    [0.9762065,  0.1542515,  0.1524053],
+        #                    [0.1524053, -0.9880316,  0.0237935]])
         # self.R = np.array([[0, 1, 0],
         #                    [-1, 0, 0],
         #                    [0, 0, 1]])  # error dynamics matrix
@@ -103,9 +65,10 @@ class System:
         # hard code calibration
         self.g = np.array([0, 0, 9.8067])
         ## vector of wheel radius
-        self.r1 = np.array([0, 0, 0.154])
+        self.r1 = np.array([0, 0, 0.33/2])
         ## vector of distance between two wheels
-        self.r2 = np.array([0.56, 0, 0])
+        self.r2 = np.array([0.556, 0, 0]) ## encoder original
+        # self.r2 = np.array([0, 0.556, 0])
 
         self.y_pos = np.zeros(5)
         self.quat = np.array([0, 0, 0, 1])
@@ -121,6 +84,7 @@ class System:
         self.cov_w[19, 19] = 5
         self.cov_w[20, 20] = 5
         self.nf_cov = np.diag([5, 5, 5])  # nf_cov is 3*3 matrix
+        self.N_pseudo = np.diag([5, 5])
         self.N_camera = np.diag([100, 100, 100, 10, 10, 10])  # N is covariance for camera data
         self.N_pos = np.eye(3) * 5
         self.v_c_observation = np.zeros(3)
@@ -154,86 +118,182 @@ class System:
 
 def plot(v, p, b_w, b_a, R_quat, p_c, R_c_quat, t, measurement_pos, v_body, q_visdom, v_body_camera):
 
-    fig, axs = plt.subplots(4, 3, figsize=(15, 7))
-    axs[0, 0].plot(t, v[:, 0])
-    axs[0, 0].plot(t, v_body[:, 0])
-    axs[0, 0].plot(t, v_body_camera[:, 0])
-    axs[0, 0].set_title("v_x")
-    axs[0, 1].plot(t, v[:, 1])
-    axs[0, 1].plot(t, v_body[:, 1])
-    axs[0, 1].plot(t, v_body_camera[:, 1])
-    axs[0, 1].set_title("v_y")
-    axs[0, 2].plot(t, v[:, 2])
-    axs[0, 2].plot(t, v_body[:, 2])
-    axs[0, 2].plot(t, v_body_camera[:, 2])
-    axs[0, 2].set_title("v_z")
 
-    axs[1, 0].plot(t, p[:, 0])
-    # axs[1, 0].plot(Sec_camera_pos_total[0:idx], p_x_visdom[0:idx])
-    axs[1, 0].plot(t, measurement_pos[:, 0])
-    axs[1, 0].set_title("p_x")
-    axs[1, 1].plot(t, p[:, 1])
+    ## plot 2d trajectory
+    fig = plt.figure(figsize=(16,8))
+    plt.plot(measurement_pos[:, 0], measurement_pos[:, 1], linewidth=1)
+    plt.plot(p[:, 0], p[:, 1],linewidth=1)
+    plt.legend(("visual_odometry", "proposed"), loc="center left")
+    # plt.set_xlabel("x-pos (m)")
+    # plt.set_ylabel("y-pos (m)")
+    plt.show()
+
+
+    ## plotting trajectory
+    fig = plt.figure(figsize=(16,8))
+    ax = plt.axes(projection='3d')
+    ax.plot3D(measurement_pos[:, 0], measurement_pos[:, 1], measurement_pos[:, 2], linewidth=1)
+    ax.plot3D(p[:, 0], p[:, 1], p[:, 2],linewidth=1)
+    plt.legend(("visual_odometry", "proposed"), loc="center left")
+    ax.set_xlabel("x-pos (m)")
+    ax.set_ylabel("y-pos (m)")
+    ax.set_zlabel("z-pos (m)")
+    plt.show()
+
+
+
+    ## plot against time t
+    fig, axs = plt.subplots(4, 3, figsize=(30, 7))
+    fig.subplots_adjust(hspace=1.0)
+    fig.subplots_adjust(wspace=0.2)
+    axs[0, 0].plot(t, v[:, 0], linewidth=1)
+    # axs[0, 0].plot(t, v_body[:, 0], linewidth=1)
+    axs[0, 0].set_xlabel('time (s)')
+    axs[0, 0].set_title('velocity-x (m/s)')
+    axs[0, 0].xaxis.set_label_coords(.9, -.3)
+
+    axs[0, 1].plot(t, v[:, 1], linewidth=1)
+    # axs[0, 1].plot(t, v_body[:, 1], linewidth=1)
+    axs[0, 1].set_xlabel('time (s)')
+    axs[0, 1].set_title('velocity-y (m/s)')
+    axs[0, 1].xaxis.set_label_coords(.9, -.3)
+
+    axs[0, 2].plot(t, v[:, 2], linewidth=1)
+    # axs[0, 2].plot(t, v_body[:, 2], linewidth=1)
+    axs[0, 2].set_xlabel('time (s)')
+    axs[0, 2].set_title('velocity-z (m/s)')
+    axs[0, 2].xaxis.set_label_coords(.9, -.3)
+
+    axs[1, 0].plot(t, p[:, 0], linewidth=1)
+    axs[1, 0].plot(t, measurement_pos[:, 0], linewidth=1)
+    axs[1, 0].set_xlabel('time (s)')
+    axs[1, 0].set_title('position-x (m)')
+    axs[1, 0].xaxis.set_label_coords(.9, -.3)
+
+    axs[1, 1].plot(t, p[:, 1], linewidth=1)
     # axs[1, 1].plot(Sec_camera_pos_total[0:idx], p_y_visdom[0:idx])
-    axs[1, 1].plot(t, measurement_pos[:, 1])
-    axs[1, 1].set_title("p_y")
-    axs[1, 2].plot(t, p[:, 2])
+    axs[1, 1].plot(t, measurement_pos[:, 1], linewidth=1)
+    axs[1, 1].set_xlabel('time (s)')
+    axs[1, 1].set_title('position-y (m)')
+    axs[1, 1].xaxis.set_label_coords(.9, -.3)
+
+    axs[1, 2].plot(t, p[:, 2], linewidth=1)
     # axs[1, 2].plot(Sec_camera_pos_total[0:idx], p_z_visdom[0:idx])
-    axs[1, 2].plot(t, measurement_pos[:, 2])
-    axs[1, 2].set_title("p_z")
+    axs[1, 2].plot(t, measurement_pos[:, 2], linewidth=1)
+    axs[1, 2].set_xlabel('time (s)')
+    axs[1, 2].set_title('position-z (m)')
+    axs[1, 2].xaxis.set_label_coords(.9, -.3)
 
 
-    axs[2, 0].plot(t, b_w[:, 0])
-    axs[2, 0].set_title("bw_x")
-    axs[2, 1].plot(t, b_w[:, 1])
-    axs[2, 1].set_title("bw_y")
-    axs[2, 2].plot(t, b_w[:, 2])
-    axs[2, 2].set_title("bw_z")
+    axs[2, 0].plot(t, b_w[:, 0], linewidth=1)
+    axs[2, 0].set_xlabel('time (s)')
+    axs[2, 0].set_title('bias-w-x (rad)')
+    axs[2, 0].xaxis.set_label_coords(.9, -.3)
 
-    axs[3, 0].plot(t, b_a[:, 0])
-    axs[3, 0].set_title("b_a_x")
-    axs[3, 1].plot(t, b_a[:, 1])
-    axs[3, 1].set_title("b_a_y")
-    axs[3, 2].plot(t, b_a[:, 2])
-    axs[3, 2].set_title("b_a_z")
+    axs[2, 1].plot(t, b_w[:, 1], linewidth=1)
+    axs[2, 1].set_xlabel('time (s)')
+    axs[2, 1].set_title('bias-w-y (rad)')
+    axs[2, 1].xaxis.set_label_coords(.9, -.3)
+
+    axs[2, 2].plot(t, b_w[:, 2], linewidth=1)
+    axs[2, 2].set_xlabel('time (s)')
+    axs[2, 2].set_title('bias-w-z (rad)')
+    axs[2, 2].xaxis.set_label_coords(.9, -.3)
+
+    axs[3, 0].plot(t, b_a[:, 0], linewidth=1)
+    axs[3, 0].set_xlabel('time (s)')
+    axs[3, 0].set_title('bias-a-x (m/s)')
+    axs[3, 0].xaxis.set_label_coords(.9, -.3)
+
+    axs[3, 1].plot(t, b_a[:, 1], linewidth=1)
+    axs[3, 1].set_xlabel('time (s)')
+    axs[3, 1].set_title('bias-a-y (m/s)')
+    axs[3, 1].xaxis.set_label_coords(.9, -.3)
+
+    axs[3, 2].plot(t, b_a[:, 2], linewidth=1)
+    axs[3, 2].set_xlabel('time (s)')
+    axs[3, 2].set_title('bias-a-z (m/s)')
+    axs[3, 2].xaxis.set_label_coords(.9, -.3)
 
     plt.show()
-    fig, axs = plt.subplots(3, 4, figsize=(15, 5))
-    axs[0, 0].plot(t, R_quat[:, 0])
-    axs[0, 0].plot(t, q_visdom[:, 0])
-    axs[0, 0].set_title("R_quat_x")
-    axs[0, 1].plot(t, R_quat[:, 1])
-    axs[0, 1].plot(t, q_visdom[:, 1])
-    axs[0, 1].set_title("R_quat_y")
-    axs[0, 2].plot(t, R_quat[:, 2])
-    axs[0, 2].plot(t, q_visdom[:, 2])
-    axs[0, 2].set_title("R_quat_z")
-    axs[0, 3].plot(t, R_quat[:, 3])
-    axs[0, 3].plot(t, q_visdom[:, 3])
-    axs[0, 3].set_title("R_quat_w")
+    fig, axs = plt.subplots(3, 4, figsize=(30, 5))
+    fig.subplots_adjust(hspace=0.8)
+    fig.subplots_adjust(wspace=0.4)
+    axs[0, 0].plot(t, R_quat[:, 0], linewidth=1)
+    axs[0, 0].plot(t, q_visdom[:, 0], linewidth=1)
+    axs[0, 0].set_xlabel('time (s)')
+    axs[0, 0].set_title('quaternion-x (R)')
+    axs[0, 0].xaxis.set_label_coords(.9, -.3)
+    axs[0, 0].tick_params(axis='y', labelsize=8)
 
-    axs[1, 0].plot(t, R_c_quat[:, 0])
-    axs[1, 0].set_title("R_c_quat_x")
-    axs[1, 1].plot(t, R_c_quat[:, 1])
-    axs[1, 1].set_title("R_c_quat_y")
-    axs[1, 2].plot(t, R_c_quat[:, 2])
-    axs[1, 2].set_title("R_c_quat_z")
-    axs[1, 3].plot(t, R_c_quat[:, 3])
-    axs[1, 3].set_title("R_c_quat_w")
+    axs[0, 1].plot(t, R_quat[:, 1], linewidth=1)
+    axs[0, 1].plot(t, q_visdom[:, 1], linewidth=1)
+    axs[0, 1].set_xlabel('time (s)')
+    axs[0, 1].set_title('quaternion-y (R)')
+    axs[0, 1].xaxis.set_label_coords(.9, -.3)
+    axs[0, 1].tick_params(axis='y', labelsize=8)
 
-    axs[2, 0].plot(t, p_c[:, 0])
-    axs[2, 0].set_title("p_c_x")
-    axs[2, 1].plot(t, p_c[:, 1])
-    axs[2, 1].set_title("p_c_y")
-    axs[2, 2].plot(t, p_c[:, 2])
-    axs[2, 2].set_title("p_c_z")
+    axs[0, 2].plot(t, R_quat[:, 2], linewidth=1)
+    axs[0, 2].plot(t, q_visdom[:, 2], linewidth=1)
+    axs[0, 2].set_xlabel('time (s)')
+    axs[0, 2].set_title('quaternion-z (R)')
+    axs[0, 2].xaxis.set_label_coords(.9, -.3)
+    axs[0, 2].tick_params(axis='y', labelsize=8)
 
+    axs[0, 3].plot(t, R_quat[:, 3], linewidth=1)
+    axs[0, 3].plot(t, q_visdom[:, 3], linewidth=1)
+    axs[0, 3].set_xlabel('time (s)')
+    axs[0, 3].set_title('quaternion-w (R)')
+    axs[0, 3].xaxis.set_label_coords(.9, -.3)
+    axs[0, 3].tick_params(axis='y', labelsize=8)
 
+    axs[1, 0].plot(t, R_c_quat[:, 0], linewidth=1)
+    axs[1, 0].set_xlabel('time (s)')
+    axs[1, 0].set_title('quaternion-x (Rc)')
+    axs[1, 0].xaxis.set_label_coords(.9, -.3)
+    axs[1, 0].tick_params(axis='y', labelsize=7)
+
+    axs[1, 1].plot(t, R_c_quat[:, 1], linewidth=1)
+    axs[1, 1].set_xlabel('time (s)')
+    axs[1, 1].set_title('quaternion-y (Rc)')
+    axs[1, 1].xaxis.set_label_coords(.9, -.3)
+    axs[1, 1].tick_params(axis='y', labelsize=7)
+
+    axs[1, 2].plot(t, R_c_quat[:, 2], linewidth=1)
+    axs[1, 2].set_xlabel('time (s)')
+    axs[1, 2].set_title('quaternion-z (Rc)')
+    axs[1, 2].xaxis.set_label_coords(.9, -.3)
+    axs[1, 2].tick_params(axis='y', labelsize=7)
+
+    axs[1, 3].plot(t, R_c_quat[:, 3], linewidth=1)
+    axs[1, 3].set_xlabel('time (s)')
+    axs[1, 3].set_title('quaternion-w (Rc)')
+    axs[1, 3].xaxis.set_label_coords(.9, -.3)
+    axs[1, 3].tick_params(axis='y', labelsize=7)
+
+    axs[2, 0].plot(t, p_c[:, 0], linewidth=1)
+    axs[2, 0].set_xlabel('time (s)')
+    axs[2, 0].set_title('position-camera-x (Rc)')
+    axs[2, 0].xaxis.set_label_coords(.9, -.3)
+    axs[2, 0].tick_params(axis='y', labelsize=8)
+
+    axs[2, 1].plot(t, p_c[:, 1], linewidth=1)
+    axs[2, 1].set_xlabel('time (s)')
+    axs[2, 1].set_title('position-camera-y (Rc)')
+    axs[2, 1].xaxis.set_label_coords(.9, -.3)
+    axs[2, 1].tick_params(axis='y', labelsize=8)
+
+    axs[2, 2].plot(t, p_c[:, 2], linewidth=1)
+    axs[2, 2].set_xlabel('time (s)')
+    axs[2, 2].set_title('position-camera-z (Rc)')
+    axs[2, 2].xaxis.set_label_coords(.9, -.3)
+    axs[2, 2].tick_params(axis='y', labelsize=8)
+
+    axs[2, 3].tick_params(axis='y', labelsize=8)
 
     fig.tight_layout()
 
     plt.show()
-
-
 
 
 def main():
@@ -274,7 +334,7 @@ def main():
 
 
     for idx, measurement in measurements.iterrows():
-        if idx == 4500:
+        if idx == 5600:
             break
         if measurement[0] == "i":
             t = measurement[3]
@@ -286,10 +346,15 @@ def main():
             # propagate between steps
             husky.propagation_state_and_error(system)
             husky.propagation_covariance(system)
+
+
+
         elif measurement[0] == "e":
             t = measurement[3]
-            w_l = np.array([measurement[10], 0, 0])
-            w_r = np.array([measurement[11], 0, 0])
+            w_l = np.array([measurement[10], 0, 0]) ## encoder original
+            w_r = np.array([measurement[11], 0, 0]) ## encoder original
+            # w_l = np.array([0, measurement[10], 0])
+            # w_r = np.array([0, measurement[11], 0])
 
             # w_wheel = np.array([measurement[10], measurement[11]])
             # measurements_encoder = np.append(measurements_encoder, [w_wheel], axis=0)
@@ -299,13 +364,22 @@ def main():
 
             w = imu_measurement_prev[3:6]
             y_1 = helper_func.skew(w_l) @ system.r1 - 0.5 * helper_func.skew(w) @ system.r2
-            system.y_encoder_1 = np.array([y_1[0], y_1[1], y_1[2], -1, 0])
+            system.y_encoder_1 = np.array([y_1[0], y_1[1], y_1[2], -1, 0]) ## encoder original
+            # system.y_encoder_1 = y_1
 
-            w_r = np.array([measurement[11], 0, 0])
             y_2 = helper_func.skew(w_r) @ system.r1 + 0.5 * helper_func.skew(w) @ system.r2
-            system.y_encoder_2 = np.array([y_2[0], y_2[1], y_2[2], -1, 0])
+            system.y_encoder_2 = np.array([y_2[0], y_2[1], y_2[2], -1, 0]) ## encoder original
+            # system.y_encoder_2 = y_2
 
             husky.measurement_model_encoder(system)
+
+            system.y_pseudo = np.array([0, 0])
+            husky.measurement_pseudo(system)
+
+            # system.y_pseudo_1 = np.array([0, y_1[1], 0, -1, 0])
+            #
+            # system.y_pseudo_2 = np.array([0, y_2[1], 0, -1, 0])
+            # husky.measurement_pseudo(system)
         elif measurement[0] == "p":
             t = measurement[3]
 

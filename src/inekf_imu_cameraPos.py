@@ -1,23 +1,25 @@
 import numpy as np
 from scipy.linalg import block_diag, expm
 from helper_func import skew, wedge
-import pandas as pd
 
 
 class Right_IEKF:
     def __init__(self, system):
         # Right_IEKF Construct an instance of this class
-        
-        self.R = system.R  # rotation
-        self.v = system.v  # velocity
-        self.p = system.p  # position
-        self.b_w = system.b_w  # bias of angular vel
-        self.b_a = system.b_a  # bias of acc
-        self.R_c = system.R_c  # camera rotation
-        self.p_c = system.p_c  # camera position
-        self.P = system.P  # Cov
+        #
+        # Input:
+        #   system:     system and noise models
+        self.R = system.R  # error dynamics matrix
+        self.v = system.v  # process model
+        self.p = system.p  # measurement error matrix
+        self.b_w = system.b_w  # input noise covariance
+        self.b_a = system.b_a  # measurement noise covariance
+        self.R_c = system.R_c  # state vector
+        self.p_c = system.p_c  # state covariance
 
-    def Ad(self):  # Adjoint matrix
+        self.P = system.P
+
+    def Ad(self):
         Ad_x = np.zeros((9, 9))
         Ad_x[0:3, 0:3] = self.R
         Ad_x[3:6, 0:3] = skew(self.v) @ self.R
@@ -25,9 +27,8 @@ class Right_IEKF:
         Ad_x[6:9, 0:3] = skew(self.p) @ self.R
         Ad_x[6:9, 6:9] = self.R
         return Ad_x
-    
-    # Prop step
-    def compute_A(self, sys):  # Linear error dynamics in se2(3)
+
+    def compute_A(self, sys):
         A = np.zeros((21, 21))
         A[3:6, 0:3] = skew(sys.g)
         A[6:9, 3:6] = np.eye(3)
@@ -37,7 +38,7 @@ class Right_IEKF:
         A[6:9, 9:12] = -skew(self.p) @ self.R
         return A
 
-    def compute_B(self):  # Linear error dynamics in se2(3)
+    def compute_B(self):
         B = np.zeros((21, 21))
         B[0:9, 0:9] = self.Ad()
         B[9:21, 9:21] = np.eye(12)
@@ -56,6 +57,7 @@ class Right_IEKF:
 
         # A = self.compute_A(system)
         # self.error_estimated = self.error_estimated @ expm(A * system.dt)
+
     def propagation_covariance(self, system):
         PHI_k = expm(self.compute_A(system) * system.dt) # 21x21
         # print("PHI_k: ", np.shape(PHI_k))
@@ -65,7 +67,6 @@ class Right_IEKF:
         # print("Q_k: ", np.shape(Q_k))
         self.P = PHI_k @ self.P @ PHI_k.T + Q_k
     
-    # Update step with encoder
     def compute_H(self):
         H = np.zeros((3, 21))
         H[0:3, 3:6] = np.eye(3)
@@ -75,8 +76,7 @@ class Right_IEKF:
         PI = np.zeros((3, 5))
         PI[0:3, 0:3] = np.eye(3)
         return PI
-
-    def compute_X(self): # chi in se2(3)
+    def compute_X(self):
         X = np.zeros((5, 5))
         X[0:3, 0:3] = self.R
         X[0:3, 3] = self.v
@@ -86,10 +86,12 @@ class Right_IEKF:
         return X
 
     def measurement_model_encoder(self, sys):
+
+        ## encoder original
         H = self.compute_H()
         N = self.R @ sys.nf_cov @ self.R.T
         S = H @ self.P @ H.T + N
-        K = self.P @ H.T @ np.linalg.inv(S)  # better use backslack /
+        K = self.P @ H.T @ np.linalg.inv(S)
         PI = self.compute_PI()
         b = np.array([0, 0, 0, -1, 0])
 
@@ -128,6 +130,58 @@ class Right_IEKF:
         self.v = X[0:3, 3]
         self.p = X[0:3, 4]
 
+    def measurement_pseudo(self, sys):
+
+        ##
+        # A = np.zeros((2, 3))
+        # A[:, 0:2] = np.eye(2)
+        # B = self.R.T @ skew(self.v)
+        # C = -skew(sys.w - self.b_w)
+        # D = np.zeros((3, 21))
+        # D[:, 3:6] = self.R.T
+        # D[:, 15:18] = B
+        # D[:, 18:21] = C
+        # H = A @ D
+        #
+        # S = H @ self.P @ H.T + sys.N_pseudo
+        # K = self.P @ H.T @ np.linalg.inv(S)
+        # delta = K @ (sys.y_pseudo - np.array([(self.R.T @ self.v)[0], (self.R.T @ self.v)[2]]))
+
+
+        A = np.zeros((2, 3))
+        A[:, 1:3] = np.eye(2)
+        B = self.R_c.T @self.R.T @ skew(self.v)
+        C = -skew(sys.w - self.b_w)
+        D = np.zeros((3, 21))
+        D[:, 3:6] = self.R.T
+        D[:, 9:12] = -skew(self.p_c)
+        D[:, 15:18] = B
+        D[:, 18:21] = C
+        H = A @ D
+
+        S = H @ self.P @ H.T + sys.N_pseudo
+        K = self.P @ H.T @ np.linalg.inv(S)
+        w = sys.w - self.b_w
+        v_body = self.R_c.T @ self.R.T @ self.v - skew(w) @ self.p_c
+        v_body = np.array([v_body[1], v_body[2]])
+        delta = K @ (sys.y_pseudo - v_body)
+
+        delta_IMU = delta[0:9]
+        delta_bw = delta[9:12]
+        delta_ba = delta[12:15]
+        delta_Rc = delta[15:18]
+        delta_pc = delta[18:21]
+
+        X = expm(wedge(delta_IMU)) @ self.compute_X()
+        self.b_w = self.b_w + delta_bw
+        self.b_a = self.b_a + delta_ba
+        self.R_c = expm(skew(delta_Rc)) @ self.R_c
+        self.p_c = self.p_c + delta_pc
+        self.P = (np.eye(21) - K @ H) @ self.P @ (np.eye(21) - K @ H).T + K @ sys.N_pseudo @ K.T
+        self.R = X[0:3, 0:3]
+        self.v = X[0:3, 3]
+        self.p = X[0:3, 4]
+
     def measurement_model_position(self, sys):
         H = np.zeros((3, 9))
         H[0:3, 6:9] = np.eye(3)
@@ -161,7 +215,7 @@ class Right_IEKF:
         ## Jacobina matrix H and G
         H = np.zeros((3, 21))
         H[:, 3:6] = -self.R_c.T @ self.R.T
-        H[:, 15:18] = self.R_c.T @ skew(self.R.T @ self.v)+skew(sys.w_c_observation) @ self.R_c.T @ skew(self.p_c)
+        H[:, 15:18] = -self.R_c.T @ skew(self.R.T @ self.v)-skew(-sys.w_c_observation) @ self.R_c.T @ skew(self.p_c)
         print("sys.w_c_observation: ", )
         H[:, 18:21] = -skew(sys.w_c_observation) @ self.R_c.T
         # G = np.zeros((3, 6))
@@ -195,4 +249,7 @@ class Right_IEKF:
         self.R = X[0:3, 0:3]
         self.v = X[0:3, 3]
         self.p = X[0:3, 4]
+
+
+
 
