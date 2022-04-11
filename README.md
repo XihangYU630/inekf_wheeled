@@ -15,7 +15,6 @@ To run the code, the following environment and dependencies are required:
 - pandas == 1.3.4
 
 ## Code organization
-
     .
     ├── data                        # Folder contains the data sets
     ├── data_process                # Folder contains the data sets for Matlab
@@ -28,7 +27,7 @@ To run the code, the following environment and dependencies are required:
     │   ├── inekf_imu_cameraPos.py	# In-EKF with encoder and camera measurements
     └── README.md
 
-## Running the tests
+## Running the code
 To run the code, run `husky_inekf_light.py`for parking lot environment or `husky_inekf_indoor.py` for indoor environment.
 
 
@@ -36,9 +35,8 @@ To run the code, run `husky_inekf_light.py`for parking lot environment or `husky
 
 * See the [report] (put link here) for detailed implementations.
 
-<!-- ## Results
-Results for data set (Residential Area):
-<p align="center">
+## Results
+<!-- <p align="center">
   <img width="800" height="500" src="result/path1.png">
 </p>
 <p align="center">
@@ -66,7 +64,6 @@ Results for data set 3 (Rural Area):
 </p>
 <p align="center">
   <img width="800" height="500" src="result/path3_3d.png">
-</p>
- -->
+</p> -->
 
 
