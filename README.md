@@ -23,11 +23,13 @@ To run the code, the following environment and dependencies are required:
     ├── data_process                # Folder contains the data sets for Matlab
     ├── inekf                       # 
     ├── results                     # Folder contains final results images
-    ├── src                         # Python scripts
-    │   ├── helper_func.py          # Helper function
-    │   ├── husky_inekf_indoor.py   # Main script of state estimation with In-EKF in indoor environment
-    │   ├── husky_inekf_light.py    # Main script of state estimation with In-EKF in parking lot environment
-    │   ├── inekf_imu_cameraPos.py	# In-EKF with encoder and camera measurements
+    ├── src                         # Matlab and Python scripts
+    │   ├── Matlab                  # Matlab scripts
+    │   ├── Python                  # Python scripts
+    │   │   ├── helper_func.py          # Helper function
+    │   │   ├── husky_inekf_indoor.py   # Main script of state estimation with In-EKF in indoor environment
+    │   │   ├── husky_inekf_light.py    # Main script of state estimation with In-EKF in parking lot environment
+    │   │   ├── inekf_imu_cameraPos.py	# In-EKF with encoder and camera measurements
     └── README.md
 
 ## Running the code
