@@ -1,0 +1,318 @@
+%% Description
+% DecodeData.m decodes the csv files 
+clear all
+close all
+clc
+fsize = 10;
+addpath('Utilities\')
+time_gt = [];
+%% Data
+[gps,imu,camera,encoder] = getDataFromCsv(); % Need to multiply gps data by tf to bring to robot frame
+
+data_mat = load('Data2\Parking\DATA.mat');
+imu_filtered = readmatrix('Data2\Parking\Odometry_Fitered_parking.csv');
+orbslam = readmatrix('Data2\Parking\augmented_parking_timed.csv');
+vel_odom = readmatrix('Data2\Parking\Husky_vel_ctrl_odom_with_vw.csv');
+data_mat = data_mat.sortedsensordatasetnew;
+data_mat = data_mat(1:11000,:);
+data_mat(1,:) = [];
+data_mat(:,2:3) = [];
+    
+state.g = [0; 0; 9.81];
+state.r_wheel = [0; 0; 0.33/2];
+state.robot_base = [0.556; 0; 0];
+
+%% Initialize state vector
+% state.R = eul2rotm([0 0 0]);
+state.R = [1 0 -0.04; 0 0.99 -0.04; 0.04 0.04 0.97];
+state.v = 1e-2*ones(3,1);
+state.p = [0;0;0];
+state.bw = 1e-2*ones(3,1);
+state.ba = 1e-2*ones(3,1);
+state.Rc = [0 1 0;-1 0 0;0 0 1];
+state.pc = 1e-2*ones(3,1); % Multiply by R from imu to camera
+state.P = eye(21);
+state.P(16:21,16:21) = zeros(6);
+state.X = [state.R state.v state.p; zeros(1,3) 1 0; zeros(1,3) 0 1];
+state.cov_w = diag([ones(1,15) 5*ones(1,6)]);
+% state.cov_nf = [5 1 1; 1 5 1; 1 1 5];
+state.cov_nf = diag([5 5 5]);
+
+%% Initialize Results
+results.orientation = [];
+results.position = [];
+results.linear_velocity = [];
+results.bias_w = [];
+results.bias_a = [];
+results.camera_orientation = [];
+results.camera_position = [];
+
+%% Initialize Ground Truth
+gt.orientation = [];
+gt.position = [];
+gt.linear_velocity = [];
+gt.bias_w = [];
+gt.bias_a = [];
+gt.camera_orientation = [];
+gt.camera_position = [];
+GYRO_VEC = [];
+%% Propagation + Correction
+for i=4:size(data_mat,1)
+    %% Get time
+    state.dt = data_mat.refSec(i) - data_mat.refSec(i-1);
+    
+    %% Propagate, correct and remove data
+    if data_mat.VarName1(i) == "i"
+        gyro_vec = [data_mat.w_x(i); data_mat.w_y(i); data_mat.w_z(i)];
+        acc_vec = [data_mat.a_x(i); data_mat.a_y(i); data_mat.a_z(i)];
+        state = propagate_state(state,gyro_vec,acc_vec);
+        GYRO_VEC = [GYRO_VEC; gyro_vec'];
+    end
+    if data_mat.VarName1(i) == "e"
+        enc_vec = [data_mat.w_left(i); data_mat.w_right(i)];
+        state = correct_encoder(state,GYRO_VEC(end,:)',enc_vec);
+    end
+
+    %% Update Results
+    results.orientation = [results.orientation; rotm2eul(state.R,'XYZ')];
+    results.position = [results.position; state.p'];
+    results.linear_velocity = [results.linear_velocity; state.v'];
+    results.bias_w = [results.bias_w; state.bw'];
+    results.bias_a = [results.bias_a; state.ba'];
+    results.camera_orientation = [results.camera_orientation; rotm2eul(state.Rc,'XYZ')];
+    results.camera_position = [results.camera_position; state.pc'];
+    %% Update Ground Truth
+    if data_mat.VarName1(i) == "p"
+        time_gt = [time_gt; data_mat.refSec(i)];
+        temp = [data_mat.qW(i) data_mat.qX(i) data_mat.qY(i) data_mat.qZ(i)];
+        gt.orientation = [gt.orientation; quat2eul(temp,'XYZ')];
+        temp_pos = state.Rc*[data_mat.X(i) data_mat.Y(i) data_mat.Z(i)]';
+        temp_vel = state.Rc*[data_mat.v_x(i) data_mat.v_y(i) data_mat.v_z(i)]';
+        gt.position = [gt.position; temp_pos'];
+        gt.linear_velocity = [gt.linear_velocity; temp_vel'];
+        gt.camera_orientation = [gt.camera_orientation; quat2eul(temp,'XYZ')];
+        gt.camera_position = [gt.camera_position; temp_pos'];
+    end
+    gt.bias_w = [gt.bias_w; state.bw'];
+    gt.bias_a = [gt.bias_a; state.ba'];
+end
+%% Plotting
+time = data_mat.refSec(4:end);
+vel_odom = vel_odom(1:500,:);
+time_vel_odom = vel_odom(:,3);
+figure(1)
+hold on
+rottest = eul2rotm([pi/1.5 0 pi/1.5]); % pi/1.3
+test= [];
+for i=1:length(gps.Position.X)
+    test = [test;(rottest*[gps.Position.X(i);gps.Position.Y(i);gps.Position.Z(i)])'];
+end
+for i=1:length(time_gt)
+end
+% for i=1:length(results.position(:,1))
+%     R_temp = eul2rotm(results.orientation(i,:),'XYZ');
+%     results.position(i,:) = (R_temp*results.position(i,:)')';
+% end
+test(53:68,:) = [];
+plot3(orbslam(:,2),orbslam(:,3),orbslam(:,4))
+plot3(results.position(:,1),results.position(:,2),results.position(:,3),'b');
+plot3(gt.position(:,1),gt.position(:,2),gt.position(:,3),'black')
+plot3(test(:,1),test(:,2),test(:,3),'green')
+plot3(imu_filtered(:,4),imu_filtered(:,5),imu_filtered(:,6));
+xlabel('$x \; (m)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$y \; (m)$', 'fontsize', fsize, 'Interpreter','latex')
+zlabel('$z \; (m)$', 'fontsize', fsize, 'Interpreter','latex')
+legend('Ours','Camera','GPS', 'fontsize', fsize, 'Interpreter','latex');
+title('(a)','fontsize', fsize, 'Interpreter','latex');
+axis equal tight 
+grid on
+
+figure(2)
+subplot(5,3,1)
+hold on
+plot(time,wrapToPi(results.orientation(:,1)));
+plot(time_gt,gt.orientation(:,1));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$\phi \; (rad)$', 'fontsize', fsize, 'Interpreter','latex')
+legend('ours','camera', 'fontsize',fsize, 'Interpreter','latex');
+
+subplot(5,3,2)
+hold on
+plot(time,results.orientation(:,2));
+plot(time_gt,gt.orientation(:,2));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$\theta \; (rad)$', 'fontsize', fsize, 'Interpreter','latex')
+legend('ours','camera', 'fontsize',fsize, 'Interpreter','latex');
+
+subplot(5,3,3)
+hold on
+plot(time,results.orientation(:,3));
+plot(time_gt,gt.orientation(:,3));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$\psi \; (rad)$', 'fontsize', fsize, 'Interpreter','latex')
+legend('ours','camera', 'fontsize',fsize, 'Interpreter','latex');
+
+subplot(5,3,4)
+hold on
+plot(time_vel_odom,vel_odom(:,11));
+plot(time,results.linear_velocity(:,1));
+plot(time_gt,gt.linear_velocity(:,1));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$v_x \; (m/s)$', 'fontsize', fsize, 'Interpreter','latex')
+legend('odom','ours', 'camera','fontsize',fsize, 'Interpreter','latex');
+
+subplot(5,3,5)
+hold on
+plot(time_vel_odom,vel_odom(:,12));
+plot(time,results.linear_velocity(:,2));
+plot(time_gt,gt.linear_velocity(:,2));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$v_y \; (m/s)$', 'fontsize', fsize, 'Interpreter','latex')
+legend('odom','ours','camera', 'fontsize',fsize, 'Interpreter','latex');
+
+subplot(5,3,6)
+hold on
+plot(time_vel_odom,vel_odom(:,13));
+plot(time,results.linear_velocity(:,3));
+plot(time_gt,gt.linear_velocity(:,3));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$v_z \; (m/s)$', 'fontsize', fsize, 'Interpreter','latex')
+legend('odom','ours','camera', 'fontsize',fsize, 'Interpreter','latex');
+
+subplot(5,3,7)
+hold on
+plot(time,results.position(:,1));
+plot(time_gt,gt.position(:,1));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$x \; (m)$', 'fontsize', fsize, 'Interpreter','latex')
+legend('ours','camera', 'fontsize',fsize, 'Interpreter','latex');
+
+subplot(5,3,8)
+hold on
+plot(time,results.position(:,2));
+plot(time_gt,gt.position(:,2));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$y \; (m)$', 'fontsize', fsize, 'Interpreter','latex')
+legend('ours','camera', 'fontsize',fsize, 'Interpreter','latex');
+
+subplot(5,3,9)
+hold on
+plot(time,results.position(:,3));
+plot(time_gt,gt.position(:,3));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$z \; (m)$', 'fontsize', fsize, 'Interpreter','latex')
+legend('ours','camera', 'fontsize',fsize, 'Interpreter','latex');
+
+subplot(5,3,10)
+plot(time,results.bias_w(:,1));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$b_\omega (1) \; (rad/s)$', 'fontsize', fsize, 'Interpreter','latex')
+
+subplot(5,3,11)
+plot(time,results.bias_w(:,2));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$b_\omega (2) \; (rad/s)$', 'fontsize', fsize, 'Interpreter','latex')
+
+subplot(5,3,12)
+plot(time,results.bias_w(:,3));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$b_\omega (3) \; (rad/s)$', 'fontsize', fsize, 'Interpreter','latex')
+
+subplot(5,3,13)
+plot(time,results.bias_a(:,1));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$b_a (1) \; (m/s^2)$', 'fontsize', fsize, 'Interpreter','latex')
+
+subplot(5,3,14)
+plot(time,results.bias_a(:,2));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$b_a (2) \; (m/s^2)$', 'fontsize', fsize, 'Interpreter','latex')
+
+subplot(5,3,15)
+plot(time,results.bias_a(:,3));
+xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+ylabel('$b_a (3) \; (m/s^2)$', 'fontsize', fsize, 'Interpreter','latex')
+
+
+% subplot(7,3,16)
+% plot(time,results.camera_orientation(:,1));
+% xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+% ylabel('$\phi_c \; (rad)$', 'fontsize', fsize, 'Interpreter','latex')
+% 
+% subplot(7,3,17)
+% plot(time,results.camera_orientation(:,2));
+% xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+% ylabel('$\theta_c \; (rad)$', 'fontsize', fsize, 'Interpreter','latex')
+% 
+% subplot(7,3,18)
+% plot(time,results.camera_orientation(:,3));
+% xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+% ylabel('$\psi_c \; (rad)$', 'fontsize', fsize, 'Interpreter','latex')
+% 
+% subplot(7,3,19)
+% plot(time,results.camera_position(:,1));
+% xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+% ylabel('$x_c \; (m)$', 'fontsize', fsize, 'Interpreter','latex')
+% 
+% subplot(7,3,20)
+% plot(time,results.camera_position(:,2));
+% xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+% ylabel('$y_c \; (m)$', 'fontsize', fsize, 'Interpreter','latex')
+% 
+% subplot(7,3,21)
+% plot(time,results.camera_position(:,3));
+% xlabel('$t \; (s)$', 'fontsize', fsize, 'Interpreter','latex')
+% ylabel('$z_c \; (m)$', 'fontsize', fsize, 'Interpreter','latex')
+
+%% 
+function  state = propagate_state(state,gyro_vec,acc_vec)
+    state.R = state.R * expm( wedge_se3( ( gyro_vec - state.bw ) * state.dt ) );
+    state.v = state.v + state.R * ( acc_vec - state.ba ) * state.dt + state.g * state.dt;
+    state.p = state.p + state.v * state.dt + 0.5 * state.R * ( acc_vec - state.ba ) * state.dt ^ 2 + 0.5 * state.g * state.dt ^ 2;
+    state.X = [state.R state.v state.p; zeros(1,3) 1 0; zeros(1,3) 0 1];
+    state.bw = state.bw;
+    state.ba = state.ba;
+    state.Rc = state.Rc;
+    state.pc = state.pc;
+    phi = expm( jacobian_A(state.X) * state.dt );
+    Q = jacobian_B( state.X ) * state.cov_w * jacobian_B( state.X )';
+    Q_disc = phi * Q * phi' *state.dt;
+    state.P = phi * state.P * phi' + Q_disc;
+end
+
+function state = correct_encoder(state,gyro_vec,enc_vec)
+    H = [zeros(3) eye(3) zeros(3,15)];
+    N = state.R * state.cov_nf * state.R';
+    S = H * state.P * H' + N;
+    L = state.P * H' * ( S \ eye( size(S) ) );
+    b = [ zeros(3,1); -1; 0 ];
+    %% Left Update
+    w_l = [enc_vec(1); 0; 0];
+    y_l = [wedge_se3(w_l)*state.r_wheel - 0.5*wedge_se3(gyro_vec)*state.robot_base; -1; 0];
+    delta_vec_l =  L * [eye(3) zeros(3,2)] * ( state.X * y_l - b );
+    state.X = expm( wedge_se23 ( delta_vec_l(1:9) ) ) * state.X;
+    state.R = state.X(1:3,1:3);
+    state.v = state.X(1:3,4);
+    state.p = state.X(1:3,5);
+    state.P = (eye(21)-L*H)*state.P*(eye(21)-L*H)' + L*N*L';
+    state.ba = state.ba + delta_vec_l(13:15);
+    state.bw = state.bw + delta_vec_l(10:12);
+    state.Rc = expm(wedge_se3(delta_vec_l(16:18)))*state.Rc;
+    state.pc = state.pc + delta_vec_l(19:21);
+    %% right
+    N = state.R * state.cov_nf * state.R';
+    S = H * state.P * H' + N;
+    L = state.P * H' * ( S \ eye( size(S) ) );
+    w_r = [enc_vec(2); 0; 0];
+    y_r = [wedge_se3(w_r)*state.r_wheel + 0.5*wedge_se3(gyro_vec)*state.robot_base; -1; 0];
+    delta_vec_r =  L * [eye(3) zeros(3,2)] * ( state.X * y_r - b );
+    state.X = expm( wedge_se23 ( delta_vec_r(1:9) ) ) * state.X;
+    state.R = state.X(1:3,1:3);
+    state.v = state.X(1:3,4);
+    state.p = state.X(1:3,5);
+    state.P = (eye(21)-L*H)*state.P*(eye(21)-L*H)' + L*N*L';
+    state.ba = state.ba + delta_vec_r(13:15);
+    state.bw = state.bw + delta_vec_r(10:12);
+    state.Rc = expm(wedge_se3(delta_vec_r(16:18)))*state.Rc;
+    state.pc = state.pc + delta_vec_r(19:21);
+end
