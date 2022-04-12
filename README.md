@@ -61,7 +61,7 @@ The following video shows how our proposed algorithms (encoder-only and encoder-
 </a>
 
 <a href = "https://github.com/rzf16">
-  <img src = "https://avatars.githubusercontent.com/u/46109917?s=64&v=4?size=50"/>
+  <img src = "https://avatars.githubusercontent.com/u/46109917?s=48&v=4?.png?size=50"/>
 </a>
 
 <!-- <iframe src="https://umich-my.sharepoint.com/personal/teochiro_umich_edu/_layouts/15/Doc.aspx?sourcedoc={b58d029a-1b85-45da-8555-0aa1cb9df0c2}&amp;action=embedview&amp;wdAr=1.7777777777777777" width="476px" height="288px" frameborder="0">This is an embedded <a target="_blank" href="https://office.com">Microsoft Office</a> presentation, powered by <a target="_blank" href="https://office.com/webapps">Office</a>.</iframe> -->
