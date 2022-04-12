@@ -32,6 +32,7 @@ To run the code, the following environment and dependencies are required:
 
 ## Running the code
 To run the Python code, run `husky_inekf_light.py`for parking lot environment
+
 To run the Matlab code, run `main.m`for parking lot environment
 <!-- or `husky_inekf_indoor.py` for indoor environment. -->
 
