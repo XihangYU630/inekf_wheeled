@@ -43,7 +43,7 @@ To run the Matlab code, run `main.m`for parking lot environment
 
 ## Results
 
-The following video shows how our proposed algorithms (encoder-only and encoder-pseudo measurement) work well compared to ORB-SLAM2, Visual Odometry and GPS.
+The following video shows how our proposed algorithms (encoder-only and encoder-pseudo measurement) work well compared to ORB-SLAM2, Visual Odometry, Odometry and GPS.
 
 <p align="center">
   <img src="results/final_gif.gif" alt="animated" />
