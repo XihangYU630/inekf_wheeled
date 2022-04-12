@@ -1,6 +1,6 @@
-# IMU-encoder Wheeled Robot State Estimation in Slippery Environments Using InEKF
+# Slip-Robust InEKF for Wheeled Robots
 
-This project aims to estimate the states of a wheel robot in outdoor environments using IMU data, wheel encoder data, and camera measurements. An InEKF based approach is taken to achieve the objective. This project is developed based on the ["Legged Robot State Estimation in Slippery Environments Using Invariant Extended Kalman Filter with Velocity Update"](https://arxiv.org/abs/2104.04238) and the open source code of ["In-EKF"](https://github.com/RossHartley/invariant-ekf).
+This project aims to estimate the states of a wheel robot in outdoor environments using IMU data, wheel encoder data. An InEKF based approach is taken to achieve the objective. This project is developed based on the ["Legged Robot State Estimation in Slippery Environments Using Invariant Extended Kalman Filter with Velocity Update"](https://arxiv.org/abs/2104.04238) and the open source code of ["In-EKF"](https://github.com/RossHartley/invariant-ekf).
 
 <p align="center">
   <img width="800" height="500" src="results/husky_inekf.png">
