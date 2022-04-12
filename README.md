@@ -3,7 +3,7 @@
 This project aims to estimate the states of a wheel robot in outdoor environments using IMU data, wheel encoder data. An InEKF based approach is taken to achieve the objective. This project is developed based on the ["Legged Robot State Estimation in Slippery Environments Using Invariant Extended Kalman Filter with Velocity Update"](https://arxiv.org/abs/2104.04238) and the open source code of ["In-EKF"](https://github.com/RossHartley/invariant-ekf).
 
 <p align="center">
-  <img width="500" height="500" src="results/husky_inekf.png">
+  <img width="750" height="500" src="results/husky_inekf.png">
 </p>
 
 
@@ -50,15 +50,15 @@ The following video shows how our proposed algorithms (encoder-only and encoder-
 
 
 ## Contributors
-Theodor Chakhachiro [Github](https://github.com/Theochiro), [Linkedin](), [Google Scholar](https://scholar.google.com/citations?user=GFfVbcQAAAAJ&hl=en), [Homepage](https://theodorchakhachiro.netlify.app/)
+* Theodor Chakhachiro: [Github](https://github.com/Theochiro), [Linkedin](https://www.linkedin.com/in/teochiro/), [Google Scholar](https://scholar.google.com/citations?user=GFfVbcQAAAAJ&hl=en), [Homepage](https://theodorchakhachiro.netlify.app/)
 
-Ryan Feng [Linkedin](https://www.linkedin.com/in/ryan-feng-54646722a/), [Homepage](https://rzfeng.xyz/)
+* Ryan Feng: [Linkedin](https://www.linkedin.com/in/ryan-feng-54646722a/), [Homepage](https://rzfeng.xyz/)
 
-Vladimir Krokhmal [Github](https://github.com/VladKrokhmal), [Linkedin](https://www.linkedin.com/in/krokhmalvladimir/)
+* Vladimir Krokhmal: [Github](https://github.com/VladKrokhmal), [Linkedin](https://www.linkedin.com/in/krokhmalvladimir/)
 
-Xihang Yu [Github](https://github.com/XihangYU630), [Linkedin](https://www.linkedin.com/in/xihang-yu-291511207/)
+* Xihang Yu: [Github](https://github.com/XihangYU630), [Linkedin](https://www.linkedin.com/in/xihang-yu-291511207/)
 
-Hongyu Zhou [Github](https://github.com/Hongyu-ZHOU), [Linkedin](https://www.linkedin.com/in/hongyu-zhou-2398761a9/), [Google Scholar](https://scholar.google.com/citations?user=byfB4H8AAAAJ&hl=en&authuser=1), [Homepage](https://hongyu-zhou.github.io/)
+* Hongyu Zhou: [Github](https://github.com/Hongyu-ZHOU), [Linkedin](https://www.linkedin.com/in/hongyu-zhou-2398761a9/), [Google Scholar](https://scholar.google.com/citations?user=byfB4H8AAAAJ&hl=en&authuser=1), [Homepage](https://hongyu-zhou.github.io/)
 
 <!-- <a href = "https://github.com/XihangYU630">
   <img src = "https://avatars.githubusercontent.com/u/94797458?s=48&v=4.png?size=50"/>
