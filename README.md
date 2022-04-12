@@ -56,7 +56,7 @@ The following video shows how our proposed algorithms (encoder-only and encoder-
   <img src = "https://avatars.githubusercontent.com/u/74928553?s=48&v=4.png?size=50"/>
 </a>
 
-<a href = "https://github.com/Theochiro">
+<a href = "https://github.com/Hongyu-ZHOU">
   <img src = "https://avatars.githubusercontent.com/u/62939586?s=48&v=4.png?size=50"/>
 </a>
 
