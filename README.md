@@ -5,7 +5,6 @@ This project aims to estimate the states of a wheel robot in outdoor environment
 <p align="center">
   <img width="800" height="500" src="results/husky_inekf.png">
 </p>
-![caption]("results/slam_video.mp4")
 
 
 ## Getting Started
@@ -41,7 +40,6 @@ To run the code, run `husky_inekf_light.py`for parking lot environment
 * See the [report] (put link here) for detailed implementations.
 
 ## Results
-
 
 
 <p align="center">
