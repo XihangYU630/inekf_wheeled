@@ -44,7 +44,7 @@ To run the Matlab code, run `main.m`for parking lot environment
 
 
 <p align="center">
-  <img src="results/Video_comp.gif" alt="animated" />
+  <img src="results/Video_Comp.gif" alt="animated" />
 </p>
 
 
