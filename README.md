@@ -5,9 +5,8 @@ This project aims to estimate the states of a wheel robot in outdoor environment
 <p align="center">
   <img width="800" height="500" src="results/husky_inekf.png">
 </p>
-<p align="center">
-  <img width="800" height="246" src="results/slam_video.mp4">
-</p>
+results/slam_video.mp4
+
 
 ## Getting Started
 To run the code, the following environment and dependencies are required: 
