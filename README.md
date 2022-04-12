@@ -50,7 +50,7 @@ To run the Matlab code, run `main.m`for parking lot environment
 
 ## Contributors
 
-<a href = "https://avatars.githubusercontent.com/u/62939586?v=4.png?size=50">
+<a href = "https://avatars.githubusercontent.com/u/62939586?v=4">
   <img src = "https://avatars.githubusercontent.com/u/62939586?v=4.png?size=50"/>
 </a>
 
