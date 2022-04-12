@@ -42,6 +42,12 @@ To run the code, run `husky_inekf_light.py`for parking lot environment
 ## Results
 
 
+
+https://user-images.githubusercontent.com/94797458/162911783-9d3121a5-26b5-49b9-b3f2-93c0b03bbd6e.mp4
+
+
+
+
 <p align="center">
   <img src="results/Encoder_only_comparison.gif" alt="animated" />
 </p>
