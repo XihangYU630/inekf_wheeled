@@ -49,11 +49,6 @@ To run the Matlab code, run `main.m`for parking lot environment
 
 
 
-<p align="center">
-  <img src="results/Encoder_only_comparison.gif" alt="animated" />
-</p>
-
-
 <!-- <iframe src="https://umich-my.sharepoint.com/personal/teochiro_umich_edu/_layouts/15/Doc.aspx?sourcedoc={b58d029a-1b85-45da-8555-0aa1cb9df0c2}&amp;action=embedview&amp;wdAr=1.7777777777777777" width="476px" height="288px" frameborder="0">This is an embedded <a target="_blank" href="https://office.com">Microsoft Office</a> presentation, powered by <a target="_blank" href="https://office.com/webapps">Office</a>.</iframe> -->
 <!-- <p align="center">
   <img width="800" height="500" src="result/path1.png">
