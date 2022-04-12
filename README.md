@@ -46,7 +46,7 @@ To run the Matlab code, run `main.m`for parking lot environment
 The following two videos show how our proposed two algorithms (encoder-only and encoder-pseudo measurement) work well compared to other algorithms.
 
 <p align="center">
-  <img src="results/Video_Comp.gif" alt="animated" />
+  <img src="results/final_gif.gif" alt="animated" />
 </p>
 
 
